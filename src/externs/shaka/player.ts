@@ -31,3 +31,198 @@ export interface AdvancedAbrConfiguration {
   fastHalfLife: number;
   slowHalfLife: number;
 }
+
+
+/**
+ * @typedef {{
+*   minWidth: number,
+*   maxWidth: number,
+*   minHeight: number,
+*   maxHeight: number,
+*   minPixels: number,
+*   maxPixels: number,
+*
+*   minFrameRate: number,
+*   maxFrameRate: number,
+*
+*   minBandwidth: number,
+*   maxBandwidth: number
+* }}
+*
+* @description
+* An object describing application restrictions on what tracks can play.  All
+* restrictions must be fulfilled for a track to be playable/selectable.
+* The restrictions system behaves somewhat differently at the ABR level and the
+* player level, so please refer to the documentation for those specific
+* settings.
+*
+* @see shaka.extern.PlayerConfiguration
+* @see shaka.extern.AbrConfiguration
+*
+* @property {number} minWidth
+*   The minimum width of a video track, in pixels.
+* @property {number} maxWidth
+*   The maximum width of a video track, in pixels.
+* @property {number} minHeight
+*   The minimum height of a video track, in pixels.
+* @property {number} maxHeight
+*   The maximum height of a video track, in pixels.
+* @property {number} minPixels
+*   The minimum number of total pixels in a video track (i.e.
+*   <code>width * height</code>).
+* @property {number} maxPixels
+*   The maximum number of total pixels in a video track (i.e.
+*   <code>width * height</code>).
+*
+* @property {number} minFrameRate
+*   The minimum framerate of a variant track.
+* @property {number} maxFrameRate
+*   The maximum framerate of a variant track.
+*
+* @property {number} minBandwidth
+*   The minimum bandwidth of a variant track, in bit/sec.
+* @property {number} maxBandwidth
+*   The maximum bandwidth of a variant track, in bit/sec.
+* @exportDoc
+*/
+export interface Restrictions {
+  minWidth: number;
+  maxWidth: number;
+  minHeight: number;
+  maxHeight: number;
+  minPixels: number;
+  maxPixels: number;
+  minFrameRate: number;
+  maxFrameRate: number;
+  minBandwidth: number;
+  maxBandwidth: number;
+}
+
+
+/**
+ * @typedef {{
+*   enabled: boolean,
+*   useNetworkInformation: boolean,
+*   defaultBandwidthEstimate: number,
+*   restrictions: shaka.extern.Restrictions,
+*   switchInterval: number,
+*   bandwidthUpgradeTarget: number,
+*   bandwidthDowngradeTarget: number,
+*   advanced: shaka.extern.AdvancedAbrConfiguration,
+*   restrictToElementSize: boolean,
+*   restrictToScreenSize: boolean,
+*   ignoreDevicePixelRatio: boolean,
+*   clearBufferSwitch: boolean,
+*   safeMarginSwitch: number
+* }}
+*
+* @property {boolean} enabled
+*   If true, enable adaptation by the current AbrManager.  Defaults to true.
+* @property {boolean} useNetworkInformation
+*   If true, use Network Information API in the current AbrManager.
+*   Defaults to true.
+* @property {number} defaultBandwidthEstimate
+*   The default bandwidth estimate to use if there is not enough data, in
+*   bit/sec.
+* @property {shaka.extern.Restrictions} restrictions
+*   The restrictions to apply to ABR decisions.  These are "soft" restrictions.
+*   Any track that fails to meet these restrictions will not be selected
+*   automatically, but will still appear in the track list and can still be
+*   selected via <code>selectVariantTrack()</code>.  If no tracks meet these
+*   restrictions, AbrManager should not fail, but choose a low-res or
+*   low-bandwidth variant instead.  It is the responsibility of AbrManager
+*   implementations to follow these rules and implement this behavior.
+* @property {number} switchInterval
+*   The minimum amount of time that must pass between switches, in
+*   seconds. This keeps us from changing too often and annoying the user.
+* @property {number} bandwidthUpgradeTarget
+*   The fraction of the estimated bandwidth which we should try to use when
+*   upgrading.
+* @property {number} bandwidthDowngradeTarget
+*   The largest fraction of the estimated bandwidth we should use. We should
+*   downgrade to avoid this.
+* @property {shaka.extern.AdvancedAbrConfiguration} advanced
+*   Advanced ABR configuration
+* @property {boolean} restrictToElementSize
+*   If true, restrict the quality to media element size.
+*   Note: The use of ResizeObserver is required for it to work properly. If
+*   true without ResizeObserver, it behaves as false.
+*   Defaults false.
+* @property {boolean} restrictToScreenSize
+*   If true, restrict the quality to screen size.
+*   Defaults false.
+* @property {boolean} ignoreDevicePixelRatio
+*   If true,device pixel ratio is ignored when restricting the quality to
+*   media element size or screen size.
+*   Defaults false.
+* @property {boolean} clearBufferSwitch
+*   If true, the buffer will be cleared during the switch.
+*   The default automatic behavior is false to have a smoother transition.
+*   On some device it's better to clear buffer.
+*   Defaults false.
+* @property {number} safeMarginSwitch
+*   Optional amount of buffer (in seconds) to
+*   retain when clearing the buffer during the automatic switch.
+*   Useful for switching variant quickly without causing a buffering event.
+*   Defaults to 0 if not provided. Ignored if clearBuffer is false.
+*   Can cause hiccups on some browsers if chosen too small, e.g.
+*   The amount of two segments is a fair minimum to consider as safeMargin
+*   value.
+* @exportDoc
+*/
+export interface AbrConfiguration {
+  enabled: boolean;
+  useNetworkInformation: boolean;
+  defaultBandwidthEstimate: number;
+  restrictions: Restrictions;
+  switchInterval: number;
+  bandwidthUpgradeTarget: number;
+  bandwidthDowngradeTarget: number;
+  advanced: AdvancedAbrConfiguration;
+  restrictToElementSize: boolean;
+  restrictToScreenSize: boolean;
+  ignoreDevicePixelRatio: boolean;
+  clearBufferSwitch: boolean;
+  safeMarginSwitch: number;
+}
+
+
+/**
+ * @typedef {{
+*   enabled: boolean,
+*   applyMaximumSuggestedBitrate: boolean,
+*   estimatedThroughputWeightRatio: number
+* }}
+*
+* @description
+*   Common Media Server Data (CMSD) configuration.
+*
+* @property {boolean} enabled
+*   If <code>true</code>, enables reading CMSD data in media requests.
+*   Defaults to <code>true</code>.
+* @property {boolean} applyMaximumSuggestedBitrate
+*   If true, we must apply the maximum suggested bitrate. If false, we ignore
+*   this.
+*   Defaults to <code>true</code>.
+* @property {number} estimatedThroughputWeightRatio
+*   How much the estimatedThroughput of the CMSD data should be weighted
+*   against the default estimate, between 0 and 1.
+*   Defaults to <code>0.5</code>.
+* @exportDoc
+*/
+export interface CmsdConfiguration {
+  enabled: boolean;
+  applyMaximumSuggestedBitrate: boolean;
+  estimatedThroughputWeightRatio: number;
+}
+
+
+/**
+ * @typedef {{
+*   enabled: boolean,
+*   minBitrate: number,
+*   maxBitrate: number,
+*   minBufferSize: number,
+*   maxBufferSize: number,
+*   minBufferTime:
+}

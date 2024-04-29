@@ -4,17 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-goog.provide('shaka.abr.SimpleAbrManager');
+import { AbrManager } from '../../externs/shaka/abr_manager';
+import { IReleasable } from '../util/i_releasable';
+import { EwmaBandwidthEstimator } from './ewma_bandwidth_estimator';
 
-goog.require('shaka.util.IReleasable');
-goog.require('goog.asserts');
-goog.require('shaka.abr.EwmaBandwidthEstimator');
-goog.require('shaka.log');
 goog.require('shaka.util.StreamUtils');
-goog.require('shaka.util.Timer');
-
-goog.requireType('shaka.util.CmsdManager');
-
 
 /**
  * @summary
@@ -34,11 +28,11 @@ goog.requireType('shaka.util.CmsdManager');
  * per ({@link shaka.abr.SimpleAbrManager.SWITCH_INTERVAL_MS}).
  * </p>
  *
- * @implements {shaka.extern.AbrManager}
- * @implements {shaka.util.IReleasable}
+ * @implements {AbrManager}
+ * @implements {IReleasable}
  * @export
  */
-shaka.abr.SimpleAbrManager = class {
+export class SimpleAbrManager implements AbrManager, IReleasable {
   /** */
   constructor() {
     /** @private {?shaka.extern.AbrManager.SwitchCallback} */
@@ -48,7 +42,7 @@ shaka.abr.SimpleAbrManager = class {
     this.enabled_ = false;
 
     /** @private {shaka.abr.EwmaBandwidthEstimator} */
-    this.bandwidthEstimator_ = new shaka.abr.EwmaBandwidthEstimator();
+    this.bandwidthEstimator_ = new EwmaBandwidthEstimator();
 
     /** @private {?function():void} */
     this.onNetworkInformationChange_ = null;
@@ -66,14 +60,19 @@ shaka.abr.SimpleAbrManager = class {
           }
           const chosenVariant = this.chooseVariant();
           if (chosenVariant && navigator.onLine) {
-            this.switch_(chosenVariant, this.config_.clearBufferSwitch,
-                this.config_.safeMarginSwitch);
+            this.switch_(
+              chosenVariant,
+              this.config_.clearBufferSwitch,
+              this.config_.safeMarginSwitch
+            );
           }
         }
       };
 
       navigator.connection.addEventListener(
-          'change', this.onNetworkInformationChange_);
+        'change',
+        this.onNetworkInformationChange_
+      );
     }
 
     /**
@@ -109,8 +108,11 @@ shaka.abr.SimpleAbrManager = class {
       if (this.config_.restrictToElementSize) {
         const chosenVariant = this.chooseVariant();
         if (chosenVariant) {
-          this.switch_(chosenVariant, this.config_.clearBufferSwitch,
-              this.config_.safeMarginSwitch);
+          this.switch_(
+            chosenVariant,
+            this.config_.clearBufferSwitch,
+            this.config_.safeMarginSwitch
+          );
         }
       }
     });
@@ -118,7 +120,6 @@ shaka.abr.SimpleAbrManager = class {
     /** @private {?shaka.util.CmsdManager} */
     this.cmsdManager_ = null;
   }
-
 
   /**
    * @override
@@ -154,13 +155,14 @@ shaka.abr.SimpleAbrManager = class {
 
     if (navigator.connection && navigator.connection.removeEventListener) {
       navigator.connection.removeEventListener(
-          'change', this.onNetworkInformationChange_);
+        'change',
+        this.onNetworkInformationChange_
+      );
       this.onNetworkInformationChange_ = null;
     }
 
     this.resizeObserverTimer_ = null;
   }
-
 
   /**
    * @override
@@ -169,7 +171,6 @@ shaka.abr.SimpleAbrManager = class {
   init(switchCallback) {
     this.switch_ = switchCallback;
   }
-
 
   /**
    * @param {boolean=} preferFastSwitching
@@ -182,19 +183,25 @@ shaka.abr.SimpleAbrManager = class {
     let maxWidth = Infinity;
 
     if (this.config_.restrictToScreenSize) {
-      const devicePixelRatio =
-          this.config_.ignoreDevicePixelRatio ? 1 : window.devicePixelRatio;
+      const devicePixelRatio = this.config_.ignoreDevicePixelRatio
+        ? 1
+        : window.devicePixelRatio;
       maxHeight = window.screen.height * devicePixelRatio;
       maxWidth = window.screen.width * devicePixelRatio;
     }
 
     if (this.resizeObserver_ && this.config_.restrictToElementSize) {
-      const devicePixelRatio =
-          this.config_.ignoreDevicePixelRatio ? 1 : window.devicePixelRatio;
+      const devicePixelRatio = this.config_.ignoreDevicePixelRatio
+        ? 1
+        : window.devicePixelRatio;
       maxHeight = Math.min(
-          maxHeight, this.mediaElement_.clientHeight * devicePixelRatio);
+        maxHeight,
+        this.mediaElement_.clientHeight * devicePixelRatio
+      );
       maxWidth = Math.min(
-          maxWidth, this.mediaElement_.clientWidth * devicePixelRatio);
+        maxWidth,
+        this.mediaElement_.clientWidth * devicePixelRatio
+      );
     }
 
     let normalVariants = this.variants_.filter((variant) => {
@@ -205,8 +212,7 @@ shaka.abr.SimpleAbrManager = class {
     }
 
     let variants = normalVariants;
-    if (preferFastSwitching &&
-        normalVariants.length != this.variants_.length) {
+    if (preferFastSwitching && normalVariants.length != this.variants_.length) {
       variants = this.variants_.filter((variant) => {
         return shaka.util.StreamUtils.isFastSwitching(variant);
       });
@@ -214,8 +220,11 @@ shaka.abr.SimpleAbrManager = class {
 
     // Get sorted Variants.
     let sortedVariants = this.filterAndSortVariants_(
-        this.config_.restrictions, variants,
-        /* maxHeight= */ Infinity, /* maxWidth= */ Infinity);
+      this.config_.restrictions,
+      variants,
+      /* maxHeight= */ Infinity,
+      /* maxWidth= */ Infinity
+    );
 
     if (maxHeight != Infinity || maxWidth != Infinity) {
       const resolutions = this.getResolutionList_(sortedVariants);
@@ -228,7 +237,11 @@ shaka.abr.SimpleAbrManager = class {
       }
 
       sortedVariants = this.filterAndSortVariants_(
-          this.config_.restrictions, variants, maxHeight, maxWidth);
+        this.config_.restrictions,
+        variants,
+        maxHeight,
+        maxWidth
+      );
     }
 
     const currentBandwidth = this.getBandwidthEstimate();
@@ -239,11 +252,16 @@ shaka.abr.SimpleAbrManager = class {
       // These restrictions are not "hard" restrictions in the way that
       // top-level or DRM-based restrictions are.  Sort the variants without
       // restrictions and keep just the first (lowest-bandwidth) one.
-      shaka.log.warning('No variants met the ABR restrictions. ' +
-                        'Choosing a variant by lowest bandwidth.');
+      shaka.log.warning(
+        'No variants met the ABR restrictions. ' +
+          'Choosing a variant by lowest bandwidth.'
+      );
       sortedVariants = this.filterAndSortVariants_(
-          /* restrictions= */ null, variants,
-          /* maxHeight= */ Infinity, /* maxWidth= */ Infinity);
+        /* restrictions= */ null,
+        variants,
+        /* maxHeight= */ Infinity,
+        /* maxWidth= */ Infinity
+      );
       sortedVariants = [sortedVariants[0]];
     }
 
@@ -252,12 +270,13 @@ shaka.abr.SimpleAbrManager = class {
 
     for (let i = 0; i < sortedVariants.length; i++) {
       const item = sortedVariants[i];
-      const playbackRate =
-          !isNaN(this.playbackRate_) ? Math.abs(this.playbackRate_) : 1;
+      const playbackRate = !isNaN(this.playbackRate_)
+        ? Math.abs(this.playbackRate_)
+        : 1;
       const itemBandwidth = playbackRate * item.bandwidth;
       const minBandwidth =
-          itemBandwidth / this.config_.bandwidthDowngradeTarget;
-      let next = {bandwidth: Infinity};
+        itemBandwidth / this.config_.bandwidthDowngradeTarget;
+      let next = { bandwidth: Infinity };
       for (let j = i + 1; j < sortedVariants.length; j++) {
         if (item.bandwidth != sortedVariants[j].bandwidth) {
           next = sortedVariants[j];
@@ -266,14 +285,18 @@ shaka.abr.SimpleAbrManager = class {
       }
       const nextBandwidth = playbackRate * next.bandwidth;
       const maxBandwidth = nextBandwidth / this.config_.bandwidthUpgradeTarget;
-      shaka.log.v2('Bandwidth ranges:',
-          (itemBandwidth / 1e6).toFixed(3),
-          (minBandwidth / 1e6).toFixed(3),
-          (maxBandwidth / 1e6).toFixed(3));
+      shaka.log.v2(
+        'Bandwidth ranges:',
+        (itemBandwidth / 1e6).toFixed(3),
+        (minBandwidth / 1e6).toFixed(3),
+        (maxBandwidth / 1e6).toFixed(3)
+      );
 
-      if (currentBandwidth >= minBandwidth &&
-          currentBandwidth <= maxBandwidth &&
-          chosen.bandwidth != item.bandwidth) {
+      if (
+        currentBandwidth >= minBandwidth &&
+        currentBandwidth <= maxBandwidth &&
+        chosen.bandwidth != item.bandwidth
+      ) {
         chosen = item;
       }
     }
@@ -281,7 +304,6 @@ shaka.abr.SimpleAbrManager = class {
     this.lastTimeChosenMs_ = Date.now();
     return chosen;
   }
-
 
   /**
    * @override
@@ -291,7 +313,6 @@ shaka.abr.SimpleAbrManager = class {
     this.enabled_ = true;
   }
 
-
   /**
    * @override
    * @export
@@ -300,25 +321,25 @@ shaka.abr.SimpleAbrManager = class {
     this.enabled_ = false;
   }
 
-
   /**
    * @override
    * @export
    */
   segmentDownloaded(deltaTimeMs, numBytes, allowSwitch) {
-    shaka.log.v2('Segment downloaded:',
-        'deltaTimeMs=' + deltaTimeMs,
-        'numBytes=' + numBytes,
-        'lastTimeChosenMs=' + this.lastTimeChosenMs_,
-        'enabled=' + this.enabled_);
+    shaka.log.v2(
+      'Segment downloaded:',
+      'deltaTimeMs=' + deltaTimeMs,
+      'numBytes=' + numBytes,
+      'lastTimeChosenMs=' + this.lastTimeChosenMs_,
+      'enabled=' + this.enabled_
+    );
     goog.asserts.assert(deltaTimeMs >= 0, 'expected a non-negative duration');
     this.bandwidthEstimator_.sample(deltaTimeMs, numBytes);
 
-    if (allowSwitch && (this.lastTimeChosenMs_ != null) && this.enabled_) {
+    if (allowSwitch && this.lastTimeChosenMs_ != null && this.enabled_) {
       this.suggestStreams_();
     }
   }
-
 
   /**
    * @override
@@ -327,13 +348,13 @@ shaka.abr.SimpleAbrManager = class {
   getBandwidthEstimate() {
     const defaultBandwidthEstimate = this.getDefaultBandwidth_();
     const bandwidthEstimate = this.bandwidthEstimator_.getBandwidthEstimate(
-        defaultBandwidthEstimate);
+      defaultBandwidthEstimate
+    );
     if (this.cmsdManager_) {
       return this.cmsdManager_.getBandwidthEstimate(bandwidthEstimate);
     }
     return bandwidthEstimate;
   }
-
 
   /**
    * @override
@@ -343,7 +364,6 @@ shaka.abr.SimpleAbrManager = class {
     this.variants_ = variants;
   }
 
-
   /**
    * @override
    * @export
@@ -351,7 +371,6 @@ shaka.abr.SimpleAbrManager = class {
   playbackRateChanged(rate) {
     this.playbackRate_ = rate;
   }
-
 
   /**
    * @override
@@ -368,12 +387,12 @@ shaka.abr.SimpleAbrManager = class {
         const SimpleAbrManager = shaka.abr.SimpleAbrManager;
         // Batch up resize changes before checking them.
         this.resizeObserverTimer_.tickAfter(
-            /* seconds= */ SimpleAbrManager.RESIZE_OBSERVER_BATCH_TIME);
+          /* seconds= */ SimpleAbrManager.RESIZE_OBSERVER_BATCH_TIME
+        );
       });
       this.resizeObserver_.observe(this.mediaElement_);
     }
   }
-
 
   /**
    * @override
@@ -382,7 +401,6 @@ shaka.abr.SimpleAbrManager = class {
   setCmsdManager(cmsdManager) {
     this.cmsdManager_ = cmsdManager;
   }
-
 
   /**
    * @override
@@ -395,7 +413,6 @@ shaka.abr.SimpleAbrManager = class {
     }
   }
 
-
   /**
    * Calls switch_() with the variant chosen by chooseVariant().
    *
@@ -403,8 +420,10 @@ shaka.abr.SimpleAbrManager = class {
    */
   suggestStreams_() {
     shaka.log.v2('Suggesting Streams...');
-    goog.asserts.assert(this.lastTimeChosenMs_ != null,
-        'lastTimeChosenMs_ should not be null');
+    goog.asserts.assert(
+      this.lastTimeChosenMs_ != null,
+      'lastTimeChosenMs_ should not be null'
+    );
 
     if (!this.startupComplete_) {
       // Check if we've got enough data yet.
@@ -429,14 +448,17 @@ shaka.abr.SimpleAbrManager = class {
 
     if (chosenVariant) {
       shaka.log.debug(
-          'Calling switch_(), bandwidth=' + currentBandwidthKbps + ' kbps');
+        'Calling switch_(), bandwidth=' + currentBandwidthKbps + ' kbps'
+      );
       // If any of these chosen streams are already chosen, Player will filter
       // them out before passing the choices on to StreamingEngine.
-      this.switch_(chosenVariant, this.config_.clearBufferSwitch,
-          this.config_.safeMarginSwitch);
+      this.switch_(
+        chosenVariant,
+        this.config_.clearBufferSwitch,
+        this.config_.safeMarginSwitch
+      );
     }
   }
-
 
   /**
    * @private
@@ -447,15 +469,17 @@ shaka.abr.SimpleAbrManager = class {
     // Some browsers implement the Network Information API, which allows
     // retrieving information about a user's network connection.  Tizen 3 has
     // NetworkInformation, but not the downlink attribute.
-    if (navigator.connection && navigator.connection.downlink &&
-        this.config_.useNetworkInformation) {
+    if (
+      navigator.connection &&
+      navigator.connection.downlink &&
+      this.config_.useNetworkInformation
+    ) {
       // If it's available, get the bandwidth estimate from the browser (in
       // megabits per second) and use it as defaultBandwidthEstimate.
       defaultBandwidthEstimate = navigator.connection.downlink * 1e6;
     }
     return defaultBandwidthEstimate;
   }
-
 
   /**
    * @param {?shaka.extern.Restrictions} restrictions
@@ -486,8 +510,10 @@ shaka.abr.SimpleAbrManager = class {
         goog.asserts.assert(restrictions, 'Restrictions should exist!');
 
         return shaka.util.StreamUtils.meetsRestrictions(
-            variant, restrictions,
-            /* maxHwRes= */ {width: maxWidth, height: maxHeight});
+          variant,
+          restrictions,
+          /* maxHwRes= */ { width: maxWidth, height: maxHeight }
+        );
       });
     }
 
@@ -518,8 +544,7 @@ shaka.abr.SimpleAbrManager = class {
       return v1.width - v2.width;
     });
   }
-};
-
+}
 
 /**
  * The amount of time, in seconds, we wait to batch up rapid resize changes.
