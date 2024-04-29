@@ -4,14 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ICaptionDecoder } from '../../externs/shaka/cea';
+import { ClosedCaption, ICaptionDecoder } from '../../externs/shaka/cea';
 
 export class DummyCaptionDecoder implements ICaptionDecoder {
   /** @override */
   extract(_userDataSeiMessage: Uint8Array, _pts: number) {}
 
-  /** @override */
-  decode() {
+  decode(): ClosedCaption[] {
     return [];
   }
 
@@ -19,7 +18,7 @@ export class DummyCaptionDecoder implements ICaptionDecoder {
   clear() {}
 
   /** @override */
-  getStreams() {
+  getStreams(): string[] {
     return [];
   }
 }

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ICeaParser } from '../../externs/shaka/cea';
+import { CaptionPacket, ICeaParser } from '../../externs/shaka/cea';
 
 /**
  * Dummy CEA parser.
@@ -19,7 +19,7 @@ export class DummyCeaParser implements ICeaParser {
   /**
    * @override
    */
-  parse(_mediaSegment: BufferSource) {
+  parse(_mediaSegment: BufferSource): CaptionPacket[] {
     return /* captionPackets= */ [];
   }
 }
