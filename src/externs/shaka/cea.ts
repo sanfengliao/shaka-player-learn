@@ -29,7 +29,7 @@ export interface ICeaParser {
    * @return {!Array<!shaka.extern.ICeaParser.CaptionPacket>}
    * @exportDoc
    */
-  parse(mediaSegment: BufferSource): CaptionPacket;
+  parse(mediaSegment: BufferSource): CaptionPacket[];
 }
 
 /**
@@ -75,10 +75,9 @@ export interface ICaptionDecoder {
   /**
    * Decodes all currently extracted packets and then clears them.
    * This should be called once for a set of extracts (see comment on extract).
-   * @return {!Array.<!shaka.extern.ICaptionDecoder.ClosedCaption>}
    * @exportDoc
    */
-  decode(): ClosedCaption;
+  decode(): ClosedCaption[];
 
   /**
    * Clears the decoder state completely.
