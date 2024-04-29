@@ -121,41 +121,272 @@ export class Cue {
   startTime: number;
   endTime: number;
   region: CueRegion;
-  size: number;
   payload: string;
-  position: number;
-  textAlign: String;
-  positionAlign: string;
-  direction: string;
-  writingMode: string;
-  lineInterpretation: number;
-  line: number;
-  lineHeight: string;
-  lineAlign: string;
-  displayAlign: string;
-  color: string;
-  backgroundColor: string;
-  backgroundImage: string;
-  border: string;
-  fontSize: string;
-  fontWeight: number;
-  fontStyle: string;
-  fontFamily: string;
-  letterSpacing: string;
-  linePadding: string;
-  opacity: number;
-  textCombineUpright: string;
-  textDecoration: string[];
-  textShadow: string;
-  textStrokeColor: string;
-  textStrokeWidth: string;
-  wrapLine: boolean;
-  id: string;
-  nestedCues: Cue[];
-  isContainer: boolean;
-  lineBreak: boolean;
-  rubyTag: string;
-  cellResolution: { columns: number; rows: number };
+
+  /**
+   * The indent (in percent) of the cue box in the direction defined by the
+   * writing direction.
+   * @type {?number}
+   * @export
+   */
+  position = 0;
+
+  /**
+   * Position alignment of the cue.
+   * @type {shaka.text.Cue.positionAlign}
+   * @export
+   */
+  positionAlign = Cue.positionAlign.AUTO;
+
+  /**
+   * Size of the cue box (in percents), where 0 means "auto".
+   * @type {number}
+   * @export
+   */
+  size = 0;
+
+  /**
+   * Alignment of the text inside the cue box.
+   * @type {shaka.text.Cue.textAlign}
+   * @export
+   */
+  textAlign = Cue.textAlign.CENTER;
+
+  /**
+   * Text direction of the cue.
+   * @type {shaka.text.Cue.direction}
+   * @export
+   */
+  direction = Cue.direction.HORIZONTAL_LEFT_TO_RIGHT;
+
+  /**
+   * Text writing mode of the cue.
+   * @type {shaka.text.Cue.writingMode}
+   * @export
+   */
+  writingMode = Cue.writingMode.HORIZONTAL_TOP_TO_BOTTOM;
+
+  /**
+   * The way to interpret line field. (Either as an integer line number or
+   * percentage from the display box).
+   * @type {shaka.text.Cue.lineInterpretation}
+   * @export
+   */
+  lineInterpretation = Cue.lineInterpretation.LINE_NUMBER;
+
+  /**
+   * The offset from the display box in either number of lines or
+   * percentage depending on the value of lineInterpretation.
+   * @type {?number}
+   * @export
+   */
+  line = 0;
+
+  /**
+   * Separation between line areas inside the cue box in px or em
+   * (e.g. '100px'/'100em'). If not specified, this should be no less than
+   * the largest font size applied to the text in the cue.
+   * @type {string}.
+   * @export
+   */
+  lineHeight = '';
+
+  /**
+   * Line alignment of the cue box.
+   * Start alignment means the cue box’s top side (for horizontal cues), left
+   * side (for vertical growing right), or right side (for vertical growing
+   * left) is aligned at the line.
+   * Center alignment means the cue box is centered at the line.
+   * End alignment The cue box’s bottom side (for horizontal cues), right side
+   * (for vertical growing right), or left side (for vertical growing left) is
+   * aligned at the line.
+   * @type {shaka.text.Cue.lineAlign}
+   * @export
+   */
+  lineAlign = Cue.lineAlign.START;
+
+  /**
+   * Vertical alignments of the cues within their extents.
+   * 'BEFORE' means displaying the captions at the top of the text display
+   * container box, 'CENTER' means in the middle, 'AFTER' means at the bottom.
+   * @type {shaka.text.Cue.displayAlign}
+   * @export
+   */
+  displayAlign = Cue.displayAlign.AFTER;
+
+  /**
+   * Text color as a CSS color, e.g. "#FFFFFF" or "white".
+   * @type {string}
+   * @export
+   */
+  color = '';
+
+  /**
+   * Text background color as a CSS color, e.g. "#FFFFFF" or "white".
+   * @type {string}
+   * @export
+   */
+  backgroundColor = '';
+
+  /**
+   * The URL of the background image, e.g. "data:[mime type];base64,[data]".
+   * @type {string}
+   * @export
+   */
+  backgroundImage = '';
+
+  /**
+   * The border around this cue as a CSS border.
+   * @type {string}
+   * @export
+   */
+  border = '';
+
+  /**
+   * Text font size in px or em (e.g. '100px'/'100em').
+   * @type {string}
+   * @export
+   */
+  fontSize = '';
+
+  /**
+   * Text font weight. Either normal or bold.
+   * @type {shaka.text.Cue.fontWeight}
+   * @export
+   */
+  fontWeight = Cue.fontWeight.NORMAL;
+
+  /**
+   * Text font style. Normal, italic or oblique.
+   * @type {shaka.text.Cue.fontStyle}
+   * @export
+   */
+  fontStyle = Cue.fontStyle.NORMAL;
+
+  /**
+   * Text font family.
+   * @type {string}
+   * @export
+   */
+  fontFamily = '';
+
+  /**
+   * Text letter spacing as a CSS letter-spacing value.
+   * @type {string}
+   * @export
+   */
+  letterSpacing = '';
+
+  /**
+   * Text line padding as a CSS line-padding value.
+   * @type {string}
+   * @export
+   */
+  linePadding = '';
+
+  /**
+   * Opacity of the cue element, from 0-1.
+   * @type {number}
+   * @export
+   */
+  opacity = 1;
+
+  /**
+   * Text combine upright as a CSS text-combine-upright value.
+   * @type {string}
+   * @export
+   */
+  textCombineUpright = '';
+
+  /**
+   * Text decoration. A combination of underline, overline
+   * and line through. Empty array means no decoration.
+   * @type Cue.textDecoration
+   * @export
+   */
+  textDecoration: string[] = [];
+
+  /**
+   * Text shadow color as a CSS text-shadow value.
+   * @type {string}
+   * @export
+   */
+  textShadow = '';
+
+  /**
+   * Text stroke color as a CSS color, e.g. "#FFFFFF" or "white".
+   * @type {string}
+   * @export
+   */
+  textStrokeColor = '';
+
+  /**
+   * Text stroke width as a CSS stroke-width value.
+   * @type {string}
+   * @export
+   */
+  textStrokeWidth = '';
+
+  /**
+   * Whether or not line wrapping should be applied to the cue.
+   * @type {boolean}
+   * @export
+   */
+  wrapLine = true;
+
+  /**
+   * Id of the cue.
+   * @type {string}
+   * @export
+   */
+  id = '';
+
+  /**
+   * Nested cues, which should be laid out horizontally in one block.
+   * Top-level cues are blocks, and nested cues are inline elements.
+   * Cues can be nested arbitrarily deeply.
+   * @type {!Array.<!shaka.text.Cue>}
+   * @export
+   */
+  nestedCues: Cue[] = [];
+
+  /**
+   * If true, this represents a container element that is "above" the main
+   * cues. For example, the <body> and <div> tags that contain the <p> tags
+   * in a TTML file. This controls the flow of the final cues; any nested cues
+   * within an "isContainer" cue will be laid out as separate lines.
+   * @type {boolean}
+   * @export
+   */
+  isContainer = false;
+
+  /**
+   * Whether or not the cue only acts as a line break between two nested cues.
+   * Should only appear in nested cues.
+   * @type {boolean}
+   * @export
+   */
+  lineBreak = false;
+
+  /**
+   * Used to indicate the type of ruby tag that should be used when rendering
+   * the cue. Valid values: ruby, rp, rt.
+   * @type {?string}
+   * @export
+   */
+  rubyTag = '';
+
+  /**
+   * The number of horizontal and vertical cells into which the Root Container
+   * Region area is divided.
+   *
+   * @type {{ columns: number, rows: number }}
+   * @export
+   */
+  cellResolution = {
+    columns: 32,
+    rows: 15,
+  };
 
   /**
    * @enum {number}
@@ -196,271 +427,6 @@ export class Cue {
      * @export
      */
     this.region = new CueRegion();
-
-    /**
-     * The indent (in percent) of the cue box in the direction defined by the
-     * writing direction.
-     * @type {?number}
-     * @export
-     */
-    this.position = 0;
-
-    /**
-     * Position alignment of the cue.
-     * @type {shaka.text.Cue.positionAlign}
-     * @export
-     */
-    this.positionAlign = Cue.positionAlign.AUTO;
-
-    /**
-     * Size of the cue box (in percents), where 0 means "auto".
-     * @type {number}
-     * @export
-     */
-    this.size = 0;
-
-    /**
-     * Alignment of the text inside the cue box.
-     * @type {shaka.text.Cue.textAlign}
-     * @export
-     */
-    this.textAlign = Cue.textAlign.CENTER;
-
-    /**
-     * Text direction of the cue.
-     * @type {shaka.text.Cue.direction}
-     * @export
-     */
-    this.direction = Cue.direction.HORIZONTAL_LEFT_TO_RIGHT;
-
-    /**
-     * Text writing mode of the cue.
-     * @type {shaka.text.Cue.writingMode}
-     * @export
-     */
-    this.writingMode = Cue.writingMode.HORIZONTAL_TOP_TO_BOTTOM;
-
-    /**
-     * The way to interpret line field. (Either as an integer line number or
-     * percentage from the display box).
-     * @type {shaka.text.Cue.lineInterpretation}
-     * @export
-     */
-    this.lineInterpretation = Cue.lineInterpretation.LINE_NUMBER;
-
-    /**
-     * The offset from the display box in either number of lines or
-     * percentage depending on the value of lineInterpretation.
-     * @type {?number}
-     * @export
-     */
-    this.line = 0;
-
-    /**
-     * Separation between line areas inside the cue box in px or em
-     * (e.g. '100px'/'100em'). If not specified, this should be no less than
-     * the largest font size applied to the text in the cue.
-     * @type {string}.
-     * @export
-     */
-    this.lineHeight = '';
-
-    /**
-     * Line alignment of the cue box.
-     * Start alignment means the cue box’s top side (for horizontal cues), left
-     * side (for vertical growing right), or right side (for vertical growing
-     * left) is aligned at the line.
-     * Center alignment means the cue box is centered at the line.
-     * End alignment The cue box’s bottom side (for horizontal cues), right side
-     * (for vertical growing right), or left side (for vertical growing left) is
-     * aligned at the line.
-     * @type {shaka.text.Cue.lineAlign}
-     * @export
-     */
-    this.lineAlign = Cue.lineAlign.START;
-
-    /**
-     * Vertical alignments of the cues within their extents.
-     * 'BEFORE' means displaying the captions at the top of the text display
-     * container box, 'CENTER' means in the middle, 'AFTER' means at the bottom.
-     * @type {shaka.text.Cue.displayAlign}
-     * @export
-     */
-    this.displayAlign = Cue.displayAlign.AFTER;
-
-    /**
-     * Text color as a CSS color, e.g. "#FFFFFF" or "white".
-     * @type {string}
-     * @export
-     */
-    this.color = '';
-
-    /**
-     * Text background color as a CSS color, e.g. "#FFFFFF" or "white".
-     * @type {string}
-     * @export
-     */
-    this.backgroundColor = '';
-
-    /**
-     * The URL of the background image, e.g. "data:[mime type];base64,[data]".
-     * @type {string}
-     * @export
-     */
-    this.backgroundImage = '';
-
-    /**
-     * The border around this cue as a CSS border.
-     * @type {string}
-     * @export
-     */
-    this.border = '';
-
-    /**
-     * Text font size in px or em (e.g. '100px'/'100em').
-     * @type {string}
-     * @export
-     */
-    this.fontSize = '';
-
-    /**
-     * Text font weight. Either normal or bold.
-     * @type {shaka.text.Cue.fontWeight}
-     * @export
-     */
-    this.fontWeight = Cue.fontWeight.NORMAL;
-
-    /**
-     * Text font style. Normal, italic or oblique.
-     * @type {shaka.text.Cue.fontStyle}
-     * @export
-     */
-    this.fontStyle = Cue.fontStyle.NORMAL;
-
-    /**
-     * Text font family.
-     * @type {string}
-     * @export
-     */
-    this.fontFamily = '';
-
-    /**
-     * Text letter spacing as a CSS letter-spacing value.
-     * @type {string}
-     * @export
-     */
-    this.letterSpacing = '';
-
-    /**
-     * Text line padding as a CSS line-padding value.
-     * @type {string}
-     * @export
-     */
-    this.linePadding = '';
-
-    /**
-     * Opacity of the cue element, from 0-1.
-     * @type {number}
-     * @export
-     */
-    this.opacity = 1;
-
-    /**
-     * Text combine upright as a CSS text-combine-upright value.
-     * @type {string}
-     * @export
-     */
-    this.textCombineUpright = '';
-
-    /**
-     * Text decoration. A combination of underline, overline
-     * and line through. Empty array means no decoration.
-     * @type Cue.textDecoration
-     * @export
-     */
-    this.textDecoration = [];
-
-    /**
-     * Text shadow color as a CSS text-shadow value.
-     * @type {string}
-     * @export
-     */
-    this.textShadow = '';
-
-    /**
-     * Text stroke color as a CSS color, e.g. "#FFFFFF" or "white".
-     * @type {string}
-     * @export
-     */
-    this.textStrokeColor = '';
-
-    /**
-     * Text stroke width as a CSS stroke-width value.
-     * @type {string}
-     * @export
-     */
-    this.textStrokeWidth = '';
-
-    /**
-     * Whether or not line wrapping should be applied to the cue.
-     * @type {boolean}
-     * @export
-     */
-    this.wrapLine = true;
-
-    /**
-     * Id of the cue.
-     * @type {string}
-     * @export
-     */
-    this.id = '';
-
-    /**
-     * Nested cues, which should be laid out horizontally in one block.
-     * Top-level cues are blocks, and nested cues are inline elements.
-     * Cues can be nested arbitrarily deeply.
-     * @type {!Array.<!shaka.text.Cue>}
-     * @export
-     */
-    this.nestedCues = [];
-
-    /**
-     * If true, this represents a container element that is "above" the main
-     * cues. For example, the <body> and <div> tags that contain the <p> tags
-     * in a TTML file. This controls the flow of the final cues; any nested cues
-     * within an "isContainer" cue will be laid out as separate lines.
-     * @type {boolean}
-     * @export
-     */
-    this.isContainer = false;
-
-    /**
-     * Whether or not the cue only acts as a line break between two nested cues.
-     * Should only appear in nested cues.
-     * @type {boolean}
-     * @export
-     */
-    this.lineBreak = false;
-
-    /**
-     * Used to indicate the type of ruby tag that should be used when rendering
-     * the cue. Valid values: ruby, rp, rt.
-     * @type {?string}
-     * @export
-     */
-    this.rubyTag = '';
-
-    /**
-     * The number of horizontal and vertical cells into which the Root Container
-     * Region area is divided.
-     *
-     * @type {{ columns: number, rows: number }}
-     * @export
-     */
-    this.cellResolution = {
-      columns: 32,
-      rows: 15,
-    };
   }
 
   /**
