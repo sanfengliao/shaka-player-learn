@@ -265,3 +265,21 @@ export interface MediaQualityInfo {
   pixelAspectRatio?: string;
   width?: number;
 }
+
+/**
+ * @typedef {{
+ *   captionsUpdatePeriod: number
+ * }}
+ *
+ * @description
+ *   Text displayer configuration.
+ *
+ * @property {number} captionsUpdatePeriod
+ *   The number of seconds to see if the captions should be updated.
+ *   Defaults to <code>0.25</code>.
+ *
+ * @exportDoc
+ */
+export interface TextDisplayerConfiguration {
+  captionsUpdatePeriod: number;
+}
