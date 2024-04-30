@@ -13,7 +13,7 @@ import { DelayedTick } from './delayed_tick';
  * @final
  * @export
  */
-class Timer {
+export class Timer {
   /**
    * Each time our timer "does work", we call that a "tick". The name comes
    * from old analog clocks.
