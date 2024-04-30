@@ -6,6 +6,9 @@
 
 import { Error as IError } from '../../externs/shaka/error';
 
+const NativeError =
+  typeof window !== 'undefined' ? window.Error : globalThis.Error;
+
 /**
  * @summary
  * Describes an error that happened.
@@ -27,7 +30,7 @@ import { Error as IError } from '../../externs/shaka/error';
  * @export
  * @extends {Error}
  */
-export class MediaError implements IError {
+export class Error implements IError {
   severity: number;
   category: number;
   code: number;
@@ -35,12 +38,6 @@ export class MediaError implements IError {
   handled: boolean;
   message: string;
   stack: any;
-  /**
-   * @param {shaka.util.Error.Severity} severity
-   * @param {shaka.util.Error.Category} category
-   * @param {shaka.util.Error.Code} code
-   * @param {...*} varArgs
-   */
   constructor(
     severity: number,
     category: number,
@@ -65,13 +62,13 @@ export class MediaError implements IError {
       let categoryName = 'UNKNOWN';
       let codeName = 'UNKNOWN';
 
-      for (const k in MediaError.Category) {
+      for (const k in Error.Category) {
         // @ts-ignore
         if (Error.Category[k] == this.category) {
           categoryName = k;
         }
       }
-      for (const k in MediaError.Code) {
+      for (const k in Error.Code) {
         // @ts-ignore
         if (Error.Code[k] == this.code) {
           codeName = k;
@@ -98,9 +95,9 @@ export class MediaError implements IError {
      */
     this.message = formattedMessage;
 
-    if (MediaError.createStack) {
+    if (Error.createStack) {
       try {
-        throw new Error(this.message || 'Shaka Error');
+        throw new NativeError(this.message || 'Shaka Error');
       } catch (e: any) {
         /**
          * A stack-trace showing where the error occurred.
@@ -1116,8 +1113,8 @@ export class MediaError implements IError {
  * @type {boolean}
  */
 
-export type ErrorCodeMap = typeof MediaError.Code;
+export type ErrorCodeMap = typeof Error.Code;
 export type ErrorCode = ErrorCodeMap[keyof ErrorCodeMap];
 
-export type ErrorCategoryMap = typeof MediaError.Category;
+export type ErrorCategoryMap = typeof Error.Category;
 export type ErrorCategory = ErrorCategoryMap[keyof ErrorCategoryMap];
