@@ -104,7 +104,7 @@ export class TransmuxerEngine {
    * @param {string=} contentType
    * @return {boolean}
    */
-  static isSupported(mimeType: string) {
+  static isSupported(mimeType: string, _contentType: string) {
     const transmuxerPlugin = TransmuxerEngine.findTransmuxer(mimeType);
     if (!transmuxerPlugin) {
       return false;
