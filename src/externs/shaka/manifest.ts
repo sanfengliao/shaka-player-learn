@@ -102,7 +102,7 @@ export interface DrmInfo {
   persistentStateRequired: boolean;
   audioRobustness: string;
   videoRobustness: string;
-  serverCertificate: Uint8Array;
+  serverCertificate: Uint8Array | null;
   serverCertificateUri: string;
   sessionType: string;
   initData: Array<InitDataOverride>;

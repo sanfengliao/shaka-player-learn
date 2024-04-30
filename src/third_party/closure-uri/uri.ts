@@ -163,6 +163,23 @@ export class Uri {
     return out.join('');
   }
 
+  /**
+   * Resolves the given relative URI (a goog.Uri object), using the URI
+   * represented by this instance as the base URI.
+   *
+   * There are several kinds of relative URIs:<br>
+   * 1. foo - replaces the last part of the path, the whole query and fragment<br>
+   * 2. /foo - replaces the the path, the query and fragment<br>
+   * 3. //foo - replaces everything from the domain on.  foo is a domain name<br>
+   * 4. ?foo - replace the query and fragment<br>
+   * 5. #foo - replace the fragment only
+   *
+   * Additionally, if relative URI has a non-empty path, all ".." and "."
+   * segments will be resolved, as described in RFC 3986.
+   *
+   * @param relativeUri The relative URI to resolve.
+   * @return  The resolved URI.
+   */
   resolve(relativeUri: Uri) {
     var absoluteUri = this.clone();
     if (absoluteUri.scheme_ === 'data') {
