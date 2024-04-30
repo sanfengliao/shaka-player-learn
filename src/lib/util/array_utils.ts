@@ -89,7 +89,7 @@ export class ArrayUtils {
    * Determines if the given arrays contain equal elements in the same order.
    *
    */
-  static equal<T>(a: T[], b: T[], compareFn: (a: T, b: T) => boolean) {
+  static equal<T>(a: T[], b: T[], compareFn?: (a: T, b: T) => boolean) {
     if (!compareFn) {
       compareFn = ArrayUtils.defaultEquals;
     }

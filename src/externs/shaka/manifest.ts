@@ -1,26 +1,26 @@
-import { StreamDB } from "./offline";
+import { StreamDB } from './offline';
 
 /**
  * @typedef {{
-*   initData: !Uint8Array,
-*   initDataType: string,
-*   keyId: ?string
-* }}
-*
-* @description
-* Explicit initialization data, which override any initialization data in the
-* content. The initDataType values and the formats that they correspond to
-* are specified {@link https://bit.ly/EmeInitTypes here}.
-*
-* @property {!Uint8Array} initData
-*   Initialization data in the format indicated by initDataType.
-* @property {string} initDataType
-*   A string to indicate what format initData is in.
-* @property {?string} keyId
-*   The key Id that corresponds to this initData.
-*
-* @exportDoc
-*/
+ *   initData: !Uint8Array,
+ *   initDataType: string,
+ *   keyId: ?string
+ * }}
+ *
+ * @description
+ * Explicit initialization data, which override any initialization data in the
+ * content. The initDataType values and the formats that they correspond to
+ * are specified {@link https://bit.ly/EmeInitTypes here}.
+ *
+ * @property {!Uint8Array} initData
+ *   Initialization data in the format indicated by initDataType.
+ * @property {string} initDataType
+ *   A string to indicate what format initData is in.
+ * @property {?string} keyId
+ *   The key Id that corresponds to this initData.
+ *
+ * @exportDoc
+ */
 export interface InitDataOverride {
   initData: Uint8Array;
   initDataType: string;
@@ -29,88 +29,85 @@ export interface InitDataOverride {
 
 /**
  * @typedef {{
-*   keySystem: string,
-*   encryptionScheme: string,
-*   licenseServerUri: string,
-*   distinctiveIdentifierRequired: boolean,
-*   persistentStateRequired: boolean,
-*   audioRobustness: string,
-*   videoRobustness: string,
-*   serverCertificate: Uint8Array,
-*   serverCertificateUri: string,
-*   sessionType: string,
-*   initData: Array.<!shaka.extern.InitDataOverride>,
-*   keyIds: Set.<string>
-* }}
-*
-* @description
-* DRM configuration for a single key system.
-*
-* @property {string} keySystem
-*   <i>Required.</i> <br>
-*   The key system, e.g., "com.widevine.alpha".
-* @property {string} encryptionScheme
-*   <i>Required.</i> <br>
-*   The encryption scheme, e.g., "cenc", "cbcs", "cbcs-1-9".
-* @property {string} licenseServerUri
-*   <i>Filled in by DRM config if missing.</i> <br>
-*   The license server URI.
-* @property {boolean} distinctiveIdentifierRequired
-*   <i>Defaults to false.  Can be filled in by advanced DRM config.</i> <br>
-*   True if the application requires the key system to support distinctive
-*   identifiers.
-* @property {boolean} persistentStateRequired
-*   <i>Defaults to false.  Can be filled in by advanced DRM config.</i> <br>
-*   True if the application requires the key system to support persistent
-*   state, e.g., for persistent license storage.
-* @property {string} sessionType
-*   <i>Defaults to 'temporary' if Shaka wasn't initiated for storage.
-*   Can be filled in by advanced DRM config sessionType parameter.</i> <br>
-* @property {string} audioRobustness
-*   <i>Defaults to '', e.g., no specific robustness required.  Can be filled in
-*   by advanced DRM config.</i> <br>
-*   A key-system-specific string that specifies a required security level.
-* @property {string} videoRobustness
-*   <i>Defaults to '', e.g., no specific robustness required.  Can be filled in
-*   by advanced DRM config.</i> <br>
-*   A key-system-specific string that specifies a required security level.
-* @property {Uint8Array} serverCertificate
-*   <i>Defaults to null, e.g., certificate will be requested from the license
-*   server if required.  Can be filled in by advanced DRM config.</i> <br>
-*   A key-system-specific server certificate used to encrypt license requests.
-*   Its use is optional and is meant as an optimization to avoid a round-trip
-*   to request a certificate.
-* @property {string} serverCertificateUri
-*   <i>Defaults to '', e.g., server certificate will be requested from the
-*   given URI if serverCertificate is not provided. Can be filled in by
-*   advanced DRM config.</i>
-* @property {Array.<!shaka.extern.InitDataOverride>} initData
-*   <i>Defaults to [], e.g., no override.</i> <br>
-*   A list of initialization data which override any initialization data found
-*   in the content.  See also shaka.extern.InitDataOverride.
-* @property {Set.<string>} keyIds
-*   <i>Defaults to the empty Set</i> <br>
-*   If not empty, contains the default key IDs for this key system, as
-*   lowercase hex strings.
-* @exportDoc
-*/
+ *   keySystem: string,
+ *   encryptionScheme: string,
+ *   licenseServerUri: string,
+ *   distinctiveIdentifierRequired: boolean,
+ *   persistentStateRequired: boolean,
+ *   audioRobustness: string,
+ *   videoRobustness: string,
+ *   serverCertificate: Uint8Array,
+ *   serverCertificateUri: string,
+ *   sessionType: string,
+ *   initData: Array.<!shaka.extern.InitDataOverride>,
+ *   keyIds: Set.<string>
+ * }}
+ *
+ * @description
+ * DRM configuration for a single key system.
+ *
+ * @property {string} keySystem
+ *   <i>Required.</i> <br>
+ *   The key system, e.g., "com.widevine.alpha".
+ * @property {string} encryptionScheme
+ *   <i>Required.</i> <br>
+ *   The encryption scheme, e.g., "cenc", "cbcs", "cbcs-1-9".
+ * @property {string} licenseServerUri
+ *   <i>Filled in by DRM config if missing.</i> <br>
+ *   The license server URI.
+ * @property {boolean} distinctiveIdentifierRequired
+ *   <i>Defaults to false.  Can be filled in by advanced DRM config.</i> <br>
+ *   True if the application requires the key system to support distinctive
+ *   identifiers.
+ * @property {boolean} persistentStateRequired
+ *   <i>Defaults to false.  Can be filled in by advanced DRM config.</i> <br>
+ *   True if the application requires the key system to support persistent
+ *   state, e.g., for persistent license storage.
+ * @property {string} sessionType
+ *   <i>Defaults to 'temporary' if Shaka wasn't initiated for storage.
+ *   Can be filled in by advanced DRM config sessionType parameter.</i> <br>
+ * @property {string} audioRobustness
+ *   <i>Defaults to '', e.g., no specific robustness required.  Can be filled in
+ *   by advanced DRM config.</i> <br>
+ *   A key-system-specific string that specifies a required security level.
+ * @property {string} videoRobustness
+ *   <i>Defaults to '', e.g., no specific robustness required.  Can be filled in
+ *   by advanced DRM config.</i> <br>
+ *   A key-system-specific string that specifies a required security level.
+ * @property {Uint8Array} serverCertificate
+ *   <i>Defaults to null, e.g., certificate will be requested from the license
+ *   server if required.  Can be filled in by advanced DRM config.</i> <br>
+ *   A key-system-specific server certificate used to encrypt license requests.
+ *   Its use is optional and is meant as an optimization to avoid a round-trip
+ *   to request a certificate.
+ * @property {string} serverCertificateUri
+ *   <i>Defaults to '', e.g., server certificate will be requested from the
+ *   given URI if serverCertificate is not provided. Can be filled in by
+ *   advanced DRM config.</i>
+ * @property {Array.<!shaka.extern.InitDataOverride>} initData
+ *   <i>Defaults to [], e.g., no override.</i> <br>
+ *   A list of initialization data which override any initialization data found
+ *   in the content.  See also shaka.extern.InitDataOverride.
+ * @property {Set.<string>} keyIds
+ *   <i>Defaults to the empty Set</i> <br>
+ *   If not empty, contains the default key IDs for this key system, as
+ *   lowercase hex strings.
+ * @exportDoc
+ */
 export interface DrmInfo {
-  keySystem: string,
-  encryptionScheme: string,
-  licenseServerUri: string,
-  distinctiveIdentifierRequired: boolean,
-  persistentStateRequired: boolean,
-  audioRobustness: string,
-  videoRobustness: string,
-  serverCertificate: Uint8Array,
-  serverCertificateUri: string,
-  sessionType: string,
-  initData: Array<InitDataOverride>,
-  keyIds: Set<string>
+  keySystem: string;
+  encryptionScheme: string;
+  licenseServerUri: string;
+  distinctiveIdentifierRequired: boolean;
+  persistentStateRequired: boolean;
+  audioRobustness: string;
+  videoRobustness: string;
+  serverCertificate: Uint8Array;
+  serverCertificateUri: string;
+  sessionType: string;
+  initData: Array<InitDataOverride>;
+  keyIds: Set<string>;
 }
-
-
-
 
 /**
  * Creates a SegmentIndex; returns a Promise that resolves after the
@@ -120,7 +117,6 @@ export interface DrmInfo {
  * @exportDoc
  */
 type CreateSegmentIndexFunction = () => Promise<void>;
-
 
 /**
  * @typedef {{
@@ -368,30 +364,71 @@ export interface Variant {
   decodingInfos: Array<MediaCapabilitiesDecodingInfo>;
 }
 
-
 /**
  * @typedef {{
-*   duration: number,
-*   timescale: number,
-*   codecPrivateData: ?string
-* }}
-*
-* @description
-* Private MSS data that is necessary to be able to do transmuxing.
-*
-* @property {number} duration
-*   <i>Required.</i> <br>
-*   MSS Stream duration.
-* @property {number} timescale
-*   <i>Required.</i> <br>
-*   MSS timescale.
-* @property {?string} codecPrivateData
-*   MSS codecPrivateData.
-*
-* @exportDoc
-*/
+ *   duration: number,
+ *   timescale: number,
+ *   codecPrivateData: ?string
+ * }}
+ *
+ * @description
+ * Private MSS data that is necessary to be able to do transmuxing.
+ *
+ * @property {number} duration
+ *   <i>Required.</i> <br>
+ *   MSS Stream duration.
+ * @property {number} timescale
+ *   <i>Required.</i> <br>
+ *   MSS timescale.
+ * @property {?string} codecPrivateData
+ *   MSS codecPrivateData.
+ *
+ * @exportDoc
+ */
 export interface MssPrivateData {
   duration: number;
   timescale: number;
   codecPrivateData?: string;
+}
+
+/**
+ * @typedef {{
+ *   bitsKey: number,
+ *   blockCipherMode: string,
+ *   cryptoKey: (webCrypto.CryptoKey|undefined),
+ *   fetchKey: (shaka.extern.CreateSegmentIndexFunction|undefined),
+ *   iv: (!Uint8Array|undefined),
+ *   firstMediaSequenceNumber: number
+ * }}
+ *
+ * @description
+ * AES key and iv info from the manifest.
+ *
+ * @property {number} bitsKey
+ *   The number of the bit key (eg: 128, 256).
+ * @property {string} blockCipherMode
+ *   The block cipher mode of operation. Possible values: 'CTR' or 'CBC'.
+ * @property {webCrypto.CryptoKey|undefined} cryptoKey
+ *   Web crypto key object of the AES key. If unset, the "fetchKey"
+ *   property should be provided.
+ * @property {shaka.extern.FetchCryptoKeysFunction|undefined} fetchKey
+ *   A function that fetches the key.
+ *   Should be provided if the "cryptoKey" property is unset.
+ *   Should update this object in-place, to set "cryptoKey".
+ * @property {(!Uint8Array|undefined)} iv
+ *   The IV in the manifest, if defined. For HLS see HLS RFC 8216 Section 5.2
+ *   for handling undefined IV.
+ * @property {number} firstMediaSequenceNumber
+ *   The starting Media Sequence Number of the playlist, used when IV is
+ *   undefined.
+ *
+ * @exportDoc
+ */
+export interface AesKey {
+  bitsKey: number;
+  blockCipherMode: string;
+  cryptoKey: CryptoKey | undefined;
+  fetchKey?: CreateSegmentIndexFunction;
+  iv?: Uint8Array;
+  firstMediaSequenceNumber: number;
 }

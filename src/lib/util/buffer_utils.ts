@@ -19,7 +19,7 @@ export class BufferUtils {
    * @export
    * @suppress {strictMissingProperties}
    */
-  static equal(arr1: BufferSource, arr2: BufferSource) {
+  static equal(arr1?: BufferSource | null, arr2?: BufferSource | null) {
     if (!arr1 && !arr2) {
       return true;
     }
