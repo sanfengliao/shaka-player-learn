@@ -36,7 +36,7 @@ export class FakeEventTarget implements IReleasable {
    * Add an event listener to this object.
    *
    * @param {string} type The event type to listen for.
-   * @param {shaka.util.FakeEventTarget.ListenerType} listener The callback or
+   * @param listener The callback or
    *   listener object to invoke.
    * @param {(!AddEventListenerOptions|boolean)=} options Ignored.
    * @override
@@ -57,7 +57,7 @@ export class FakeEventTarget implements IReleasable {
    * Add an event listener to this object that is invoked for all events types
    * the object fires.
    *
-   * @param {shaka.util.FakeEventTarget.ListenerType} listener The callback or
+   * @param listener The callback or
    *   listener object to invoke.
    * @exportInterface
    */
