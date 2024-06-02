@@ -472,6 +472,26 @@ export class Platform {
   }
 
   /**
+   * Check if the current platform is a Google Chromecast with Android
+   * (i.e. Chromecast with GoogleTV).
+   *
+   * @return {boolean}
+   */
+  static isAndroidCastDevice() {
+    return Platform.isChromecast() && Platform.isAndroid();
+  }
+
+  /**
+   * Check if the current platform is a Google Chromecast with Fuchsia
+   * (i.e. Google Nest Hub).
+   *
+   * @return {boolean}
+   */
+  static isFuchsiaCastDevice() {
+    return Platform.isChromecast() && Platform.isFuchsia();
+  }
+
+  /**
    * Check if the user agent contains a key. This is the best way we know of
    * right now to detect platforms. If there is a better way, please send a
    * PR.
@@ -576,6 +596,20 @@ export class Platform {
     if (Platform.isWindows() && Platform.isEdge()) {
       return false;
     }
+
+    // Older chromecasts without GoogleTV seem to not support SMOOTH properly.
+    if (
+      Platform.isChromecast() &&
+      !Platform.isAndroidCastDevice() &&
+      !Platform.isFuchsiaCastDevice()
+    ) {
+      return false;
+    }
+    // See: https://chromium-review.googlesource.com/c/chromium/src/+/4577759
+    if (Platform.isWindows() && Platform.isEdge()) {
+      return false;
+    }
+    return true;
     return true;
   }
 

@@ -15,5 +15,10 @@
     "typescript": "^5.2.2",
     "typescript-eslint": "^7.7.1",
     "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "eme-encryption-scheme-polyfill": "^2.1.5",
+    "install": "^0.13.0",
+    "npm": "^10.8.1"
   }
 }
