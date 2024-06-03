@@ -1,4 +1,5 @@
 import { asserts } from './debug/asserts';
+import { PreloadManager } from './media/preload_manager';
 import { Error as ShakaError } from './util/error';
 import { EventManager } from './util/event_manager';
 import { FakeEvent } from './util/fake_event';
@@ -16,12 +17,17 @@ export class Player extends FakeEventTarget {
   private video_: HTMLMediaElement | null = null;
   private videoContainer_: HTMLElement | null = null;
   private loadMode_: number = Player.LoadMode.NOT_LOADED;
+  private assetUri_?: string;
   private mutex_ = new Mutex();
   private operationId_ = 0;
   // TODO: define mediaSourceEngine_
   private mediaSourceEngine_: any = null;
 
   private attachEventManager_ = new EventManager();
+
+  private preloadNextUrl_: PreloadManager | null = null;
+  private startTime_: number | undefined;
+  private fullyLoaded_ = false;
 
   constructor() {
     super();
@@ -111,7 +117,7 @@ export class Player extends FakeEventTarget {
    * @return {!Promise}
    * @export
    */
-  async unload(initializeMediaSource = true, keepAdManager: boolean) {
+  async unload(initializeMediaSource = true, keepAdManager = false) {
     throw new Error('Method not implemented.');
   }
   /**
@@ -129,10 +135,115 @@ export class Player extends FakeEventTarget {
    * @export
    */
   async load(
-    assetUriOrPreloader: string,
-    startTime: number | null = null,
+    assetUriOrPreloader: string | PreloadManager,
+    startTime?: number,
     mimeType?: string
-  ) {}
+  ) {
+    // Do not allow the player to be used after |destroy| is called.
+    if (this.loadMode_ === Player.LoadMode.DESTROYED) {
+      throw this.createAbortLoadError_();
+    }
+    let preloadManager: PreloadManager | null = null;
+    let assetUri = '';
+
+    if (assetUriOrPreloader instanceof PreloadManager) {
+      preloadManager = assetUriOrPreloader;
+      assetUri = preloadManager.getAssetUri() || '';
+    } else {
+      assetUri = assetUriOrPreloader || '';
+    }
+
+    // Quickly acquire the mutex, so this will wait for other top-level
+    // operations.
+    await this.mutex_.acquire('load');
+    this.mutex_.release();
+
+    if (!this.video_) {
+      throw new ShakaError(
+        ShakaError.Severity.CRITICAL,
+        ShakaError.Category.PLAYER,
+        ShakaError.Code.NO_VIDEO_ELEMENT
+      );
+    }
+
+    if (this.assetUri_) {
+      // Note: This is used to avoid the destruction of the nextUrl
+      // preloadManager that can be the current one.
+      this.assetUri_ = assetUri;
+      await this.unload(false);
+    }
+
+    const operationId = this.operationId_;
+
+    // Add a mechanism to detect if the load process has been interrupted by a
+    // call to another top-level operation (unload, load, etc).
+    const detectInterruption = async () => {
+      if (this.operationId_ !== operationId) {
+        if (preloadManager) {
+          await preloadManager.destroy();
+        }
+        throw this.createAbortLoadError_();
+      }
+    };
+
+    const mutexWrapOperation = async (
+      operation: () => Promise<any>,
+      mutexIdentifier: string
+    ) => {
+      try {
+        await this.mutex_.acquire(mutexIdentifier);
+        await detectInterruption();
+        await operation();
+        await detectInterruption();
+        // TODO: implement
+        // if (preloadManager && this.config_) {
+        //   preloadManager.reconfigure(this.config_);
+        // }
+      } finally {
+        this.mutex_.release();
+      }
+    };
+
+    try {
+      if (startTime == null && preloadManager) {
+        startTime = preloadManager.getStartTime();
+      }
+
+      this.startTime_ = startTime;
+      this.fullyLoaded_ = false;
+      this.dispatchEvent(Player.makeEvent_(FakeEvent.EventName.Loading));
+
+      if (preloadManager) {
+        mimeType = preloadManager.getMimeType();
+      } else if (!mimeType) {
+        await mutexWrapOperation(async () => {
+          mimeType = await this.guessMimeType_(assetUri);
+        }, 'guessMimeType_');
+      }
+    } catch (error: any) {
+      if (error.code === ShakaError.Code.LOAD_INTERRUPTED) {
+        await this.unload(false);
+      }
+      throw error;
+    } finally {
+      if (preloadManager) {
+        // This will cause any resources that were generated but not used to be
+        // properly destroyed or released.
+        await preloadManager.destroy();
+      }
+      this.preloadNextUrl_ = null;
+    }
+  }
+  private guessMimeType_(
+    assetUri: string
+  ): string | PromiseLike<string | undefined> | undefined {
+    asserts.assert(this.networkingEngine_, 'Should have a net engine!');
+    let mimeType = '';
+    if (mimeType == 'application/x-mpegurl' && Platform.isApple()) {
+      mimeType = 'application/vnd.apple.mpegurl';
+    }
+    return mimeType;
+  }
 
   /**
    * Makes a fires an event corresponding to entering a state of the loading
@@ -271,7 +382,7 @@ export class Player extends FakeEventTarget {
     return false;
   }
 
-  private static makeEvent_(type: string, data: Map<string, Object>) {
+  private static makeEvent_(type: string, data?: Map<string, Object>) {
     return new FakeEvent(type, data);
   }
 }
