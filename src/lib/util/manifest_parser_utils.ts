@@ -7,7 +7,7 @@
 import { DrmInfo, InitDataOverride } from '../../externs/shaka/manifest';
 import { Uri } from '../../third_party/closure-uri/uri';
 import { BufferUtils } from './buffer_utils';
-import { Error } from './error';
+import { ShakaError } from './error';
 import { StringUtils } from './string_utils';
 import { Uint8ArrayUtils } from './uint8array_utils';
 
@@ -167,10 +167,10 @@ export class ManifestParserUtils {
     }
 
     // Unable to guess codecs.
-    throw new Error(
-      Error.Severity.CRITICAL,
-      Error.Category.MANIFEST,
-      Error.Code.HLS_COULD_NOT_GUESS_CODECS,
+    throw new ShakaError(
+      ShakaError.Severity.CRITICAL,
+      ShakaError.Category.MANIFEST,
+      ShakaError.Code.HLS_COULD_NOT_GUESS_CODECS,
       codecs
     );
   }

@@ -1,6 +1,6 @@
 import { asserts } from './debug/asserts';
 import { PreloadManager } from './media/preload_manager';
-import { Error as ShakaError } from './util/error';
+import { ShakaError as ShakaError } from './util/error';
 import { EventManager } from './util/event_manager';
 import { FakeEvent } from './util/fake_event';
 import { FakeEventTarget } from './util/fake_event_target';

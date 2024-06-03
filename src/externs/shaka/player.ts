@@ -215,6 +215,61 @@ export interface CmsdConfiguration {
 
 /**
  * @typedef {{
+ *   captionsUpdatePeriod: number
+ * }}
+ *
+ * @description
+ *   Text displayer configuration.
+ *
+ * @property {number} captionsUpdatePeriod
+ *   The number of seconds to see if the captions should be updated.
+ *   Defaults to <code>0.25</code>.
+ *
+ * @exportDoc
+ */
+export interface TextDisplayerConfiguration {
+  captionsUpdatePeriod: number;
+}
+
+/**
+ * @typedef {{
+ *   customPlayheadTracker: boolean,
+ *   skipPlayDetection: boolean,
+ *   supportsMultipleMediaElements: boolean
+ * }}
+ *
+ * @description
+ *   Ads configuration.
+ *
+ * @property {boolean} customPlayheadTracker
+ *   If this is <code>true</code>, we create a custom playhead tracker for
+ *   Client Side. This is useful because it allows you to implement the use of
+ *   IMA on platforms that do not support multiple video elements.
+ *   Defaults to <code>false</code> except on Tizen, WebOS, Chromecast,
+ *   Hisense, PlayStation 4, PlayStation5, Xbox whose default value is
+ *   <code>true</code>.
+ * @property {boolean} skipPlayDetection
+ *   If this is true, we will load Client Side ads without waiting for a play
+ *   event.
+ *   Defaults to <code>false</code> except on Tizen, WebOS, Chromecast,
+ *   Hisense, PlayStation 4, PlayStation5, Xbox whose default value is
+ *   <code>true</code>.
+ * @property {boolean} supportsMultipleMediaElements
+ *   If this is true, the browser supports multiple media elements.
+ *   Defaults to <code>true</code> except on Tizen, WebOS, Chromecast,
+ *   Hisense, PlayStation 4, PlayStation5, Xbox whose default value is
+ *   <code>false</code>.
+ *
+ * @exportDoc
+ */
+export interface AdsConfiguration {
+  customPlayHeadTracker: boolean;
+  skipPlayDetection: boolean;
+  supportsMultipleMediaElements: boolean;
+}
+
+/**
+ * @typedef {{
  *   audioSamplingRate: ?number,
  *   bandwidth: number,
  *   codecs: string,
@@ -264,22 +319,4 @@ export interface MediaQualityInfo {
   channelsCount?: number;
   pixelAspectRatio?: string;
   width?: number;
-}
-
-/**
- * @typedef {{
- *   captionsUpdatePeriod: number
- * }}
- *
- * @description
- *   Text displayer configuration.
- *
- * @property {number} captionsUpdatePeriod
- *   The number of seconds to see if the captions should be updated.
- *   Defaults to <code>0.25</code>.
- *
- * @exportDoc
- */
-export interface TextDisplayerConfiguration {
-  captionsUpdatePeriod: number;
 }

@@ -28,9 +28,9 @@ const NativeError =
  * </ul>
  *
  * @export
- * @extends {Error}
+ * @extends {ShakaError}
  */
-export class Error implements IError {
+export class ShakaError implements IError {
   severity: number;
   category: number;
   code: number;
@@ -62,15 +62,15 @@ export class Error implements IError {
       let categoryName = 'UNKNOWN';
       let codeName = 'UNKNOWN';
 
-      for (const k in Error.Category) {
+      for (const k in ShakaError.Category) {
         // @ts-ignore
-        if (Error.Category[k] == this.category) {
+        if (ShakaError.Category[k] == this.category) {
           categoryName = k;
         }
       }
-      for (const k in Error.Code) {
+      for (const k in ShakaError.Code) {
         // @ts-ignore
-        if (Error.Code[k] == this.code) {
+        if (ShakaError.Code[k] == this.code) {
           codeName = k;
         }
       }
@@ -95,7 +95,7 @@ export class Error implements IError {
      */
     this.message = formattedMessage;
 
-    if (Error.createStack) {
+    if (ShakaError.createStack) {
       try {
         throw new NativeError(this.message || 'Shaka Error');
       } catch (e: any) {
@@ -1113,8 +1113,8 @@ export class Error implements IError {
  * @type {boolean}
  */
 
-export type ErrorCodeMap = typeof Error.Code;
+export type ErrorCodeMap = typeof ShakaError.Code;
 export type ErrorCode = ErrorCodeMap[keyof ErrorCodeMap];
 
-export type ErrorCategoryMap = typeof Error.Category;
+export type ErrorCategoryMap = typeof ShakaError.Category;
 export type ErrorCategory = ErrorCategoryMap[keyof ErrorCategoryMap];

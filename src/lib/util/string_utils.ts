@@ -7,7 +7,7 @@
 import { asserts } from '../debug/asserts';
 import { log } from '../debug/log';
 import { BufferUtils } from './buffer_utils';
-import { Error } from './error';
+import { ShakaError } from './error';
 import { Lazy } from './lazy';
 import { Platform } from './platform';
 
@@ -148,10 +148,10 @@ export class StringUtils {
 
     if (!noThrow && data.byteLength % 2 != 0) {
       log.error('Data has an incorrect length, must be even.');
-      throw new Error(
-        Error.Severity.CRITICAL,
-        Error.Category.TEXT,
-        Error.Code.BAD_ENCODING
+      throw new ShakaError(
+        ShakaError.Severity.CRITICAL,
+        ShakaError.Category.TEXT,
+        ShakaError.Code.BAD_ENCODING
       );
     }
 
@@ -204,10 +204,10 @@ export class StringUtils {
       return StringUtils.fromUTF8(data);
     }
 
-    throw new Error(
-      Error.Severity.CRITICAL,
-      Error.Category.TEXT,
-      Error.Code.UNABLE_TO_DETECT_ENCODING
+    throw new ShakaError(
+      ShakaError.Severity.CRITICAL,
+      ShakaError.Category.TEXT,
+      ShakaError.Code.UNABLE_TO_DETECT_ENCODING
     );
   }
 
