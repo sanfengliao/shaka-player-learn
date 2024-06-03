@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev": "rsbuild dev",
+    "build": "rsbuild build"
   },
   "devDependencies": {
     "@eslint/js": "^9.1.1",
+    "@rsbuild/core": "^0.7.2",
     "eslint": "^9.1.1",
     "globals": "^15.1.0",
     "typescript": "^5.2.2",

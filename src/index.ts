@@ -1,4 +1,4 @@
-import { Player, ErrorEvent } from './lib/player';
+import { Player } from './lib/player';
 import { polyfill } from './lib/polyfill';
 
 polyfill.installAll();
