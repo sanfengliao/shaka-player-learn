@@ -14,7 +14,8 @@ export class Player extends FakeEventTarget {
     SRC_EQUALS: 3,
   } as const;
   private video_: HTMLMediaElement | null = null;
-  private loadMode_: number = Player.LoadMode.DESTROYED;
+  private videoContainer_: HTMLElement | null = null;
+  private loadMode_: number = Player.LoadMode.NOT_LOADED;
   private mutex_ = new Mutex();
   private operationId_ = 0;
   // TODO: define mediaSourceEngine_
@@ -71,9 +72,47 @@ export class Player extends FakeEventTarget {
   initializeMediaSourceEngineInner_() {
     throw new Error('Method not implemented.');
   }
+  /**
+   * Detach the player from the current media element. Leaves the player in a
+   * state where it cannot play media, until it has been attached to something
+   * else.
+   *
+   */
+  async detach(keepAdManager = false) {
+    if (this.loadMode_ === Player.LoadMode.DESTROYED) {
+      throw this.createAbortLoadError_();
+    }
 
-  async detach() {
-    // TODO: implemented detach
+    await this.unload(false, keepAdManager);
+    if (await this.atomicOperationAcquireMutex_('detach')) {
+      return;
+    }
+    try {
+      if (this.video_) {
+        this.attachEventManager_.removeAll();
+        this.video_ = null;
+      }
+      this.makeStateChangeEvent_('detach');
+      // TODO implement adManager_ release
+      // if (this.adManager_ && !keepAdManager) {
+      //   this.adManager_.release();
+      // }
+    } finally {
+      this.mutex_.release();
+    }
+  }
+
+  /**
+   * TODO: implement unload
+   * Unloads the currently playing stream, if any.
+   *
+   * @param {boolean=} initializeMediaSource
+   * @param {boolean=} keepAdManager
+   * @return {!Promise}
+   * @export
+   */
+  async unload(initializeMediaSource = true, keepAdManager: boolean) {
+    throw new Error('Method not implemented.');
   }
   /**
    * TODO: support PreloadManager
