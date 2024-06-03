@@ -213,10 +213,10 @@ export interface Response {
   uri: string;
   originalUri: string;
   data: BufferSource;
-  status: number | undefined;
+  status?: number;
   headers: Record<string, string>;
-  timeMs: number | undefined;
-  fromCache: boolean | undefined;
+  timeMs?: number;
+  fromCache?: boolean;
 }
 
 /**

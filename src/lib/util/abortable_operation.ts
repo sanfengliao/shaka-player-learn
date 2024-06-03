@@ -1,7 +1,8 @@
+import { IAbortableOperation } from '../../externs/shaka/abortable';
 import { ShakaError } from './error';
 import { PublicPromise } from './public_promise';
 
-export class AbortableOperation<T> {
+export class AbortableOperation<T> implements IAbortableOperation<T> {
   promise: Promise<T>;
   private onAbort_: () => Promise<any>;
   private aborted_ = false;
@@ -105,7 +106,7 @@ export class AbortableOperation<T> {
     );
   }
 
-  finally(onFinal: (success: boolean) => {}) {
+  finally(onFinal: (success: boolean) => void) {
     this.promise.then(
       (value) => onFinal(true),
       (e) => onFinal(false)
