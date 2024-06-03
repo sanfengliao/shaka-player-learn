@@ -4,7 +4,7 @@
  * methods.
  *
  */
-export class PublicPromise<T> {
+export class PublicPromise<T = any> {
   constructor() {
     let resolvePromise!: (value: T | PromiseLike<T>) => void;
     let rejectPromise!: (reason?: any) => void;
