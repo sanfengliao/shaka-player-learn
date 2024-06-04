@@ -155,7 +155,7 @@ export interface Request {
  */
 export type ProgressUpdated = (
   duration: number,
-  downloadByteLenght: number,
+  bytesDownloadedDuringThatTime: number,
   remainByteLength: number
 ) => void;
 
