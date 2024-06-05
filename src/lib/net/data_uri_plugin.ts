@@ -5,13 +5,13 @@
  */
 
 import { IAbortableOperation } from '../../externs/shaka/abortable';
-import { ProgressUpdated, Response } from '../../externs/shaka/net';
+import { ProgressUpdated, Request, Response } from '../../externs/shaka/net';
 import { log } from '../debug/log';
 import { AbortableOperation } from '../util/abortable_operation';
 import { ShakaError } from '../util/error';
 import { StringUtils } from '../util/string_utils';
 import { Uint8ArrayUtils } from '../util/uint8array_utils';
-import { NetworkingEngineRequestType } from './network_engine';
+import { NetworkingEngine, NetworkingEngineRequestType } from './network_engine';
 
 export class DataUriPlugin {
   /**
@@ -81,10 +81,7 @@ export class DataUriPlugin {
     // Check for base64 encoding, which is always the last in the
     // semicolon-separated list if present.
     let base64Encoded = false;
-    if (
-      typeInfoList.length > 1 &&
-      typeInfoList[typeInfoList.length - 1] == 'base64'
-    ) {
+    if (typeInfoList.length > 1 && typeInfoList[typeInfoList.length - 1] == 'base64') {
       base64Encoded = true;
       typeInfoList.pop();
     }
@@ -101,3 +98,5 @@ export class DataUriPlugin {
     return { data: data, contentType };
   }
 }
+
+NetworkingEngine.registerScheme('data', DataUriPlugin.parse);

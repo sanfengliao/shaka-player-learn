@@ -31,10 +31,8 @@ export class AbortableOperation<T> implements IAbortableOperation<T> {
    *   failed with the error given by the caller.
    * @export
    */
-  static failed(error: Error) {
-    return new AbortableOperation(Promise.reject(error), () =>
-      Promise.resolve()
-    );
+  static failed(error: Error | ShakaError) {
+    return new AbortableOperation(Promise.reject(error), () => Promise.resolve());
   }
 
   /**
@@ -51,11 +49,7 @@ export class AbortableOperation<T> implements IAbortableOperation<T> {
   }
 
   static abortError() {
-    return new ShakaError(
-      ShakaError.Severity.CRITICAL,
-      ShakaError.Category.PLAYER,
-      ShakaError.Code.OPERATION_ABORTED
-    );
+    return new ShakaError(ShakaError.Severity.CRITICAL, ShakaError.Category.PLAYER, ShakaError.Code.OPERATION_ABORTED);
   }
   /**
    * @param  value
@@ -65,9 +59,7 @@ export class AbortableOperation<T> implements IAbortableOperation<T> {
    * @export
    */
   static completed<U>(value: U) {
-    return new AbortableOperation(Promise.resolve(value), () =>
-      Promise.resolve()
-    );
+    return new AbortableOperation(Promise.resolve(value), () => Promise.resolve());
   }
 
   /**
@@ -100,9 +92,8 @@ export class AbortableOperation<T> implements IAbortableOperation<T> {
    * @export
    */
   static all<U>(operations: AbortableOperation<U>[]) {
-    return new AbortableOperation(
-      Promise.all(operations.map((op) => op.promise)),
-      () => Promise.all(operations.map((op) => op.abort()))
+    return new AbortableOperation(Promise.all(operations.map((op) => op.promise)), () =>
+      Promise.all(operations.map((op) => op.abort()))
     );
   }
 
@@ -127,13 +118,10 @@ export class AbortableOperation<T> implements IAbortableOperation<T> {
    *   when this operation and the operation started by the callback are both
    *   complete.
    */
-  chain<T, U>(
-    onSuccess?:
-      | ((param: T) => U)
-      | ((param: T) => Promise<U>)
-      | ((param: T) => AbortableOperation<U>),
-    onError?: () => void
-  ): AbortableOperation<U> {
+  chain<U = any>(
+    onSuccess?: ((param: T) => U) | ((param: T) => Promise<U>) | ((param: T) => AbortableOperation<U>),
+    onError?: (reason: any) => any
+  ): AbortableOperation<UwrapAbortableOperation<U>> {
     const newPromise = new PublicPromise();
     const abortError = AbortableOperation.abortError();
     let abort = () => {
@@ -191,7 +179,6 @@ export class AbortableOperation<T> implements IAbortableOperation<T> {
     try {
       const ret = callback(value);
       if (ret instanceof AbortableOperation) {
-        newPromise.resolve(ret.promise);
         // This is an abortable operation, with its own abort() method.
         // After this point, abort() should abort the operation from the
         // callback, and the new promise should be tied to the promise
@@ -218,3 +205,5 @@ export class AbortableOperation<T> implements IAbortableOperation<T> {
     }
   }
 }
+
+type UwrapAbortableOperation<U> = U extends IAbortableOperation<infer R> ? UwrapAbortableOperation<R> : U;

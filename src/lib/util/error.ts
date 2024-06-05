@@ -6,8 +6,7 @@
 
 import { Error as IError } from '../../externs/shaka/error';
 
-const NativeError =
-  typeof window !== 'undefined' ? window.Error : globalThis.Error;
+const NativeError = typeof window !== 'undefined' ? window.Error : globalThis.Error;
 
 /**
  * @summary
@@ -38,12 +37,7 @@ export class ShakaError implements IError {
   handled: boolean;
   message: string;
   stack: any;
-  constructor(
-    severity: number,
-    category: number,
-    code: number,
-    ...varArgs: any[]
-  ) {
+  constructor(severity: number, category: number, code: number, ...varArgs: any[]) {
     this.severity = severity;
 
     this.category = category;
@@ -75,14 +69,7 @@ export class ShakaError implements IError {
         }
       }
 
-      formattedMessage =
-        'Shaka Error ' +
-        categoryName +
-        '.' +
-        codeName +
-        ' (' +
-        this.data.toString() +
-        ')';
+      formattedMessage = 'Shaka Error ' + categoryName + '.' + codeName + ' (' + this.data.toString() + ')';
     }
 
     /**
@@ -134,7 +121,7 @@ export class ShakaError implements IError {
      * to reset the library.
      */
     CRITICAL: 2,
-  } as const;
+  };
 
   static Category = {
     /** Errors from the network stack. */

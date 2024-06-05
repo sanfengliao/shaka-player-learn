@@ -10,7 +10,7 @@
  * whereas aborting only means that further work is stopped.
  *
  */
-export interface IAbortableOperation<T> {
+export interface IAbortableOperation<T = any> {
   /**
    * A Promise which represents the underlying operation.  It is resolved when
    * the operation is complete, and rejected if the operation fails or is

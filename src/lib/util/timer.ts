@@ -68,7 +68,6 @@ export class Timer {
    * Have the timer call |onTick| every |seconds| until |stop| is called.
    *
    * @param {number} seconds
-   * @return {!shaka.util.Timer}
    * @export
    */
   tickEvery(seconds: number) {

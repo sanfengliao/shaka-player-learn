@@ -1,8 +1,5 @@
 import { SegmentReference } from '../../lib/media/segment_reference';
-import {
-  NetworkingEngineAdvancedRequestType,
-  NetworkingEngineRequestType,
-} from '../../lib/net/network_engine';
+import { NetworkingEngineAdvancedRequestType, NetworkingEngineRequestType } from '../../lib/net/network_engine';
 import { IAbortableOperation } from './abortable';
 import { DrmInfo, Stream } from './manifest';
 /**
@@ -288,7 +285,7 @@ export interface RequestContext {
 export type RequestFilter = (
   requestType: NetworkingEngineRequestType,
   request: Request,
-  requestContext: RequestContext
+  requestContext?: RequestContext
 ) => Promise<any> | undefined;
 
 /**
@@ -308,5 +305,5 @@ export type RequestFilter = (
 export type ResponseFilter = (
   reqeust: NetworkingEngineRequestType,
   response: Response,
-  reqeustContext: RequestContext
+  reqeustContext?: RequestContext
 ) => Promise<any> | undefined;
