@@ -27,23 +27,23 @@ export interface Transmuxer {
 
   /**
    * Check if the mime type and the content type is supported.
-   * @param {string} mimeType
-   * @param {string=} contentType
+   * @param mimeType
+   * @param contentType
    * @return {boolean}
    */
   isSupported(mimeType: string, contentType?: string): boolean;
 
   /**
    * For any stream, convert its codecs to MP4 codecs.
-   * @param {string} contentType
-   * @param {string} mimeType
-   * @return {string}
+   * @param contentType
+   * @param mimeType
+   * @return
    */
   convertCodecs(contentType: string, mimeType: string): string;
 
   /**
    * Returns the original mimetype of the transmuxer.
-   * @return {string}
+   * @return
    */
   getOriginalMimeType(): string;
 
@@ -60,7 +60,6 @@ export interface Transmuxer {
 }
 
 /**
- * @typedef {function():!shaka.extern.Transmuxer}
  * @exportDoc
  */
 export type TransmuxerPlugin = () => Transmuxer;
