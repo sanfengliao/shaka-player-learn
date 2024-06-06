@@ -64,10 +64,10 @@ export interface ICaptionDecoder {
    * all the caption packets found in its SEI messages should be extracted by
    * successive calls to extract(), followed by a single call to decode().
    *
-   * @param {!Uint8Array} userDataSeiMessage
+   * @param userDataSeiMessage
    * This is a User Data registered by Rec.ITU-T T.35 SEI message.
    * It is described in sections D.1.6 and D.2.6 of Rec. ITU-T H.264 (06/2019).
-   * @param {number} pts PTS when this packet was received, in seconds.
+   * @param pts PTS when this packet was received, in seconds.
    * @exportDoc
    */
   extract(userDataSeiMessage: Uint8Array, pts: number): void;

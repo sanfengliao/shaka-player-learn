@@ -7,12 +7,7 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
   private startTime_: number;
   private startTimeOfLoad_: number;
 
-  constructor(
-    assetUri: string,
-    mimeType: string,
-    startTimeOfLoad: number,
-    startTime: number
-  ) {
+  constructor(assetUri: string, mimeType: string, startTimeOfLoad: number, startTime: number) {
     super();
     this.assetUri_ = assetUri;
     this.startTime_ = startTime;
@@ -38,3 +33,4 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
     return this.mimeType_;
   }
 }
+export interface PreloadManagerPlayerInterface {}

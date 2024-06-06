@@ -1,3 +1,5 @@
+import { AutoShowText } from '../../lib/config/auto_show_text';
+
 /**
  * @typedef {{
  *   minTotalBytes: number,
@@ -26,6 +28,10 @@
  * @exportDoc
  */
 export interface AdvancedAbrConfiguration {
+  /**
+   * Minimum number of bytes sampled before we trust the estimate.  If we have
+   * not sampled much data, our estimate may not be accurate enough to trust.
+   */
   minTotalBytes: number;
   minBytes: number;
   fastHalfLife: number;
@@ -269,54 +275,62 @@ export interface AdsConfiguration {
 }
 
 /**
- * @typedef {{
- *   audioSamplingRate: ?number,
- *   bandwidth: number,
- *   codecs: string,
- *   contentType: string,
- *   frameRate: ?number,
- *   height: ?number,
- *   mimeType: ?string,
- *   channelsCount: ?number,
- *   pixelAspectRatio: ?string,
- *   width: ?number
- * }}
  *
  * @description
  * Contains information about the quality of an audio or video media stream.
- *
- * @property {?number} audioSamplingRate
- *   Specifies the maximum sampling rate of the content.
- * @property {number} bandwidth
- *   The bandwidth in bits per second.
- * @property {string} codecs
- *   The Stream's codecs, e.g., 'avc1.4d4015' or 'vp9', which must be
- * compatible with the Stream's MIME type.
- * @property {string} contentType
- *   The type of content, which may be "video" or "audio".
- * @property {?number} frameRate
- *   The video frame rate.
- * @property {?number} height
- *   The video height in pixels.
- * @property {string} mimeType
- *   The MIME type.
- * @property {?number} channelsCount
- *   The number of audio channels, or null if unknown.
- * @property {?string} pixelAspectRatio
- *   The pixel aspect ratio value; e.g. "1:1".
- * @property {?number} width
- *   The video width in pixels.
- * @exportDoc
  */
 export interface MediaQualityInfo {
+  /**
+   * Specifies the maximum sampling rate of the content.
+   */
   audioSamplingRate?: number;
+  /**
+   * The bandwidth in bits per second.
+   */
   bandwidth: number;
+  /**
+   * The Stream's codecs, e.g., 'avc1.4d4015' or 'vp9', which must be
+   * compatible with the Stream's MIME type.
+   */
   codecs: string;
+  /**
+   * The type of content, which may be "video" or "audio".
+   */
   contentType: string;
+  /**
+   * The video frame rate.
+   */
   frameRate?: number;
+  /**
+   * The video height in pixels.
+   */
   height?: number;
-  mimeType: string;
-  channelsCount?: number;
-  pixelAspectRatio?: string;
+  /**
+   * The video width in pixels.
+   */
   width?: number;
+  /**
+   * The MIME type.
+   */
+  mimeType: string;
+  /**
+   * The number of audio channels, or null if unknown.
+   */
+  channelsCount?: number;
+  /**
+   * The pixel aspect ratio value; e.g. "1:1".
+   */
+  pixelAspectRatio?: string;
+}
+
+export interface PlayerConfiguration {
+  /**
+   * Ads configuration and settings.
+   */
+  ads: AdsConfiguration;
+
+  /**
+   * Controls behavior of auto-showing text tracks on load().
+   */
+  autoShowText: AutoShowText;
 }
