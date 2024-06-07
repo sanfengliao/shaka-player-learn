@@ -274,10 +274,7 @@ export class Platform {
    * Check if the current platform is Hisense.
    */
   static isHisense() {
-    return (
-      Platform.userAgentContains_('Hisense') ||
-      Platform.userAgentContains_('VIDAA')
-    );
+    return Platform.userAgentContains_('Hisense') || Platform.userAgentContains_('VIDAA');
   }
 
   /**
@@ -481,6 +478,10 @@ export class Platform {
     return Platform.isChromecast() && Platform.isAndroid();
   }
 
+  static isFuchsia() {
+    return Platform.userAgentContains_('Fuchsia');
+  }
+
   /**
    * Check if the current platform is a Google Chromecast with Fuchsia
    * (i.e. Google Nest Hub).
@@ -528,13 +529,11 @@ export class Platform {
     }
 
     Platform.cachedMediaElement_ =
-      /** @type {HTMLMediaElement} */ document.getElementsByTagName(
-        'video'
-      )[0] || document.getElementsByTagName('audio')[0];
+      /** @type {HTMLMediaElement} */ document.getElementsByTagName('video')[0] ||
+      document.getElementsByTagName('audio')[0];
 
     if (!Platform.cachedMediaElement_) {
-      Platform.cachedMediaElement_ =
-        /** @type {!HTMLMediaElement} */ document.createElement('video');
+      Platform.cachedMediaElement_ = /** @type {!HTMLMediaElement} */ document.createElement('video');
     }
 
     Platform.cacheExpirationTimer_.tickAfter(/* seconds= */ 1);
@@ -560,12 +559,7 @@ export class Platform {
    * @return {boolean}
    */
   static supportsSequenceMode() {
-    if (
-      Platform.isTizen3() ||
-      Platform.isTizen2() ||
-      Platform.isWebOS3() ||
-      Platform.isPS4()
-    ) {
+    if (Platform.isTizen3() || Platform.isTizen2() || Platform.isWebOS3() || Platform.isPS4()) {
       return false;
     }
     return true;
@@ -598,11 +592,7 @@ export class Platform {
     }
 
     // Older chromecasts without GoogleTV seem to not support SMOOTH properly.
-    if (
-      Platform.isChromecast() &&
-      !Platform.isAndroidCastDevice() &&
-      !Platform.isFuchsiaCastDevice()
-    ) {
+    if (Platform.isChromecast() && !Platform.isAndroidCastDevice() && !Platform.isFuchsiaCastDevice()) {
       return false;
     }
     // See: https://chromium-review.googlesource.com/c/chromium/src/+/4577759
@@ -651,9 +641,7 @@ export class Platform {
         // @ts-ignore
         cast.__platform__.canDisplayType &&
         // @ts-ignore
-        cast.__platform__.canDisplayType(
-          'video/mp4; codecs="avc1.640028"; width=3840; height=2160'
-        )
+        cast.__platform__.canDisplayType('video/mp4; codecs="avc1.640028"; width=3840; height=2160')
       ) {
         // The device and display can both do 4k.  Assume a 4k limit.
         maxResolution.width = 3840;
@@ -693,10 +681,7 @@ export class Platform {
           }
         }
       } catch (e) {
-        log.alwaysWarn(
-          'Tizen: Error detecting screen size, default ' +
-            'screen size 1920x1080.'
-        );
+        log.alwaysWarn('Tizen: Error detecting screen size, default ' + 'screen size 1920x1080.');
       }
     } else if (Platform.isXboxOne()) {
       const protectionCapabilities =
@@ -731,19 +716,15 @@ export class Platform {
       }
     } else if (Platform.isWebOS()) {
       try {
-        const deviceInfo =
-          /** @type {{screenWidth: number, screenHeight: number}} */ JSON.parse(
-            // @ts-ignore
-            window.PalmSystem.deviceInfo
-          );
+        const deviceInfo = /** @type {{screenWidth: number, screenHeight: number}} */ JSON.parse(
+          // @ts-ignore
+          window.PalmSystem.deviceInfo
+        );
         // WebOS has always been able to do 1080p.  Assume a 1080p limit.
         maxResolution.width = Math.max(1920, deviceInfo.screenWidth);
         maxResolution.height = Math.max(1080, deviceInfo.screenHeight);
       } catch (e) {
-        log.alwaysWarn(
-          'WebOS: Error detecting screen size, default ' +
-            'screen size 1920x1080.'
-        );
+        log.alwaysWarn('WebOS: Error detecting screen size, default ' + 'screen size 1920x1080.');
         maxResolution.width = 1920;
         maxResolution.height = 1080;
       }

@@ -1,4 +1,5 @@
 import { AutoShowText } from '../../lib/config/auto_show_text';
+import { RetryParameters } from './net';
 
 export interface AdvancedAbrConfiguration {
   /**
@@ -367,4 +368,388 @@ export interface PlayerConfiguration {
    * Controls behavior of auto-showing text tracks on load().
    */
   autoShowText: AutoShowText;
+}
+
+/**
+ * Data structure for xml nodes as simple objects
+ */
+export interface XmlNode {
+  tagName: string;
+  attributes: Record<string, any>;
+  children: (string | XmlNode)[];
+  parant?: XmlNode;
+}
+
+/**
+ *
+ */
+export interface DashManifestConfiguration {
+  /**
+   * A default clock sync URI to be used with live streams which do not
+   * contain any clock sync information.  The <code>Date</code> header from this
+   * URI will be used to determine the current time.
+   */
+  clockSyncUri: string;
+  /**
+   * If true will cause DASH parser to ignore DRM information specified
+   * by the manifest and treat it as if it signaled no particular key
+   * system and contained no init data. Defaults to false if not provided.
+   */
+  ignoreDrmInfo: boolean;
+  /**
+   * if true, xlink-related processing will be disabled. Defaults to
+   * <code>false</code> if not provided.
+   */
+  disableXlinkProcessing: boolean;
+  /**
+   * If true, xlink-related errors will result in a fallback to the tag's
+   * existing contents. If false, xlink-related errors will be propagated
+   * to the application and will result in a playback failure. Defaults to
+   * false if not provided.
+   */
+  xlinkFailGracefully: boolean;
+  /**
+   * If true will cause DASH parser to ignore <code>minBufferTime</code> from
+   * manifest. It allows player config to take precedence over manifest for
+   * <code>rebufferingGoal</code>. Defaults to <code>false</code> if not
+   * provided.
+   */
+  ignoreMinBufferTime: boolean;
+  /**
+   * If <code>true</code>, ignore the <code>availabilityStartTime</code> in the
+   * manifest and instead use the segments to determine the live edge.  This
+   * allows us to play streams that have a lot of drift.  If <code>false</code>,
+   * we can't play content where the manifest specifies segments in the future.
+   * Defaults to <code>true</code>
+   */
+  autoCorrectDrift: boolean;
+  /**
+   * The maximum number of initial segments to generate for
+   * <code>SegmentTemplate</code> with fixed-duration segments.  This is limited
+   * to avoid excessive memory consumption with very large
+   * <code>timeShiftBufferDepth</code> values.
+   */
+  initialSegmentLimit: number;
+  /**
+   * If true will cause DASH parser to ignore
+   * <code>suggestedPresentationDelay</code> from manifest. Defaults to
+   * <code>false</code> if not provided.
+   */
+  ignoreSuggestedPresentationDelay: boolean;
+
+  /**
+   * If true will cause DASH parser to ignore
+   * empty <code>AdaptationSet</code> from manifest. Defaults to
+   * <code>false</code> if not provided.
+   */
+  ignoreEmptyAdaptationSet: boolean;
+  /**
+   *  If true will cause DASH parser to ignore
+   *  <code>maxSegmentDuration</code> from manifest. Defaults to
+   *  <code>false</code> if not provided.
+   */
+  ignoreMaxSegmentDuration: boolean;
+  /**
+   * A map of scheme URI to key system name. Defaults to default key systems
+   * mapping handled by Shaka.
+   */
+  keySystemsByURI: Record<string, string>;
+
+  /**
+   * <b>DEPRECATED</b>: Use manifestPreprocessorTXml instead.
+   * Called immediately after the DASH manifest has been parsed into an
+   * XMLDocument. Provides a way for applications to perform efficient
+   * preprocessing of the manifest.
+   * @deprecated
+   */
+  manifestPreprocessor: (ele: Element) => void;
+
+  /**
+   *
+   * Called immediately after the DASH manifest has been parsed into an
+   * XMLDocument. Provides a way for applications to perform efficient
+   * preprocessing of the manifest.
+   */
+  manifestPreprocessorTXml: (node: XmlNode) => void;
+  /**
+   * If true, the media segments are appended to the SourceBuffer in
+   * "sequence mode" (ignoring their internal timestamps).
+   * <i>Defaults to <code>false</code>.</i>
+   */
+  sequenceMode: boolean;
+  /**
+   * If true, the media segments are appended to the SourceBuffer in
+   * "sequence mode" (ignoring their internal timestamps).
+   * <i>Defaults to <code>false</code>.</i>
+   */
+  enableAudioGroups: boolean;
+
+  /**
+   * If true, the manifest parser will create variants that have multiple
+   * mimeTypes or codecs for video or for audio if there is no other choice.
+   * Meant for content where some periods are only available in one mimeType or
+   * codec, and other periods are only available in a different mimeType or
+   * codec. For example, a stream with baked-in ads where the audio codec does
+   * not match the main content.
+   * Might result in undesirable behavior if mediaSource.codecSwitchingStrategy
+   * is not set to SMOOTH.
+   * Defaults to true if SMOOTH codec switching is supported, RELOAD overwise.
+   */
+  multiTypeVariantsAllowed: boolean;
+
+  /**
+   *  If period combiner is used, this option ensures every stream is used
+   *  only once in period flattening. It speeds up underlying algorithm
+   *  but may raise issues if manifest does not have stream consistency
+   *  between periods.
+   *  Defaults to <code>false</code>.
+   */
+  useStreamOnceInPeriodFlattening: boolean;
+  /**
+   * Override the minimumUpdatePeriod of the manifest. The value is in second
+   * if the value is greater than the minimumUpdatePeriod, it will update the
+   * manifest less frequently. if you update the value during for a dynamic
+   * manifest, it will directly trigger a new download of the manifest
+   * Defaults to <code>-1</code>.
+   */
+  updatePeriod: number;
+  /**
+   * If false, disables fast switching track recognition.
+   * Defaults to <code>true</code>.
+   */
+  enableFastSwitching: boolean;
+}
+
+export interface HlsManifestConfiguration {
+  /**
+   * If <code>true</code>, ignore any errors in a text stream and filter out
+   * those streams.
+   */
+  ignoreTextStreamFailures: boolean;
+  /**
+   * If <code>true</code>, ignore any errors in a image stream and filter out
+   * those streams.
+   */
+  ignoreImageStreamFailures: boolean;
+  /**
+   * The default audio codec if it is not specified in the HLS playlist.
+   * <i>Defaults to <code>'mp4a.40.2'</code>.</i>
+   */
+  defaultAudioCodec: string;
+  /**
+   * The default video codec if it is not specified in the HLS playlist.
+   * <i>Defaults to <code>'avc1.42E01E'</code>.</i>
+   */
+  defaultVideoCodec: string;
+  /**
+   * If <code>true</code>, the HLS parser will ignore the
+   * <code>EXT-X-PROGRAM-DATE-TIME</code> tags in the manifest and use media
+   * sequence numbers instead. It also causes EXT-X-DATERANGE tags to be
+   * ignored.  Meant for streams where <code>EXT-X-PROGRAM-DATE-TIME</code> is
+   * incorrect or malformed.
+   * <i>Defaults to <code>false</code>.</i>
+   */
+  ignoreManifestProgramDateTime: boolean;
+  /**
+   * An array of strings representing types for which
+   * <code>EXT-X-PROGRAM-DATE-TIME</code> should be ignored. Only used if the
+   * the main ignoreManifestProgramDateTime is set to false.
+   * For example, setting this to ['text', 'video'] will cause the PDT values
+   * text and video streams to be ignored, while still using the PDT values for
+   * audio.
+   * <i>Defaults to an empty array.</i>
+   */
+  ignoreManifestProgramDateTimeForTypes: string[];
+  /**
+   * A string containing a full mime type, including both the basic mime type
+   * and also the codecs. Used when the HLS parser parses a media playlist
+   * directly, required since all of the mime type and codecs information is
+   * contained within the master playlist.
+   * You can use the <code>shaka.util.MimeUtils.getFullType()</code> utility to
+   * format this value.
+   * <i>Defaults to
+   * <code>'video/mp2t; codecs="avc1.42E01E, mp4a.40.2"'</code>.</i>
+   */
+  mediaPlaylistFullMimeType: string;
+  /**
+   * If this is true, playback will set the availability window to the
+   * presentation delay. The player will be able to buffer ahead three
+   * segments, but the seek window will be zero-sized, to be consistent with
+   * Safari. If this is false, the seek window will be the entire duration.
+   * <i>Defaults to <code>true</code>.</i>
+   */
+  useSafariBehaviorForLive: boolean;
+  /**
+   * The default presentation delay will be calculated as a number of segments.
+   * This is the number of segments for this calculation..
+   * <i>Defaults to <code>3</code>.</i>
+   */
+  liveSegmentsDelay: number;
+
+  /**
+   * If true, the media segments are appended to the SourceBuffer in
+   * "sequence mode" (ignoring their internal timestamps).
+   * Defaults to <code>true</code> except on WebOS 3, Tizen 2,
+   * Tizen 3 and PlayStation 4 whose default value is <code>false</code>.
+   */
+  sequenceMode: boolean;
+  /**
+   * If true, don't adjust the timestamp offset to account for manifest
+   * segment durations being out of sync with segment durations. In other
+   * words, assume that there are no gaps in the segments when appending
+   * to the SourceBuffer, even if the manifest and segment times disagree.
+   * Only applies when sequenceMode is <code>false</code>.
+   * <i>Defaults to <code>false</code>.</i>
+   */
+  ignoreManifestTimestampsInSegmentsMode: boolean;
+  /**
+   * If set to true, the HLS parser won't automatically guess or assume default
+   * codec for playlists with no "CODECS" attribute. Instead, it will attempt to
+   * extract the missing information from the media segment.
+   * As a consequence, lazy-loading media playlists won't be possible for this
+   * use case, which may result in longer video startup times.
+   * <i>Defaults to <code>false</code>.</i>
+   */
+  disableCodecGuessing: boolean;
+
+  /**
+   * If true, disables the automatic detection of closed captions.
+   * Otherwise, in the absence of a EXT-X-MEDIA tag with TYPE="CLOSED-CAPTIONS",
+   * Shaka Player will attempt to detect captions based on the media data.
+   * <i>Defaults to <code>false</code>.</i>
+   */
+  disableClosedCaptionsDetection: boolean;
+
+  /**
+   * If set to true, the HLS parser will optimize operation with LL and partial
+   * byte range segments. More info in
+   * https://www.akamai.com/blog/performance/-using-ll-hls-with-byte-range-addressing-to-achieve-interoperabi
+   * <i>Defaults to <code>true</code>.</i>
+   */
+  allowLowLatencyByteRangeOptimization: boolean;
+}
+
+export interface MssManifestConfiguration {
+  /**
+   * <b>DEPRECATED</b>: Use manifestPreprocessorTXml instead.
+   * Called immediately after the MSS manifest has been parsed into an
+   * XMLDocument. Provides a way for applications to perform efficient
+   * preprocessing of the manifest.
+   * @deprecated
+   */
+  manifestPreprocessor(ele: Element): void;
+  /**
+   * Called immediately after the MSS manifest has been parsed into an
+   * XMLDocument. Provides a way for applications to perform efficient
+   * preprocessing of the manifest.
+   */
+  manifestPreprocessorTXml(node: XmlNode): void;
+  /**
+   * If true, the media segments are appended to the SourceBuffer in
+   * "sequence mode" (ignoring their internal timestamps).
+   * <i>Defaults to <code>false</code>.</i>
+   */
+  sequenceMode: boolean;
+  /**
+   * A map of system id to key system name. Defaults to default key systems
+   * mapping handled by Shaka.
+   */
+  keySystemsBySystemId: Record<string, string>;
+}
+
+export interface ManifestConfiguration {
+  // Retry parameters for manifest requests.
+  retryParameters: RetryParameters;
+  /**
+   * A number, in seconds, that overrides the availability window in the
+   * manifest, or <code>NaN</code> if the default value should be used.  This is
+   * enforced by the manifest parser, so custom manifest parsers should take
+   * care to honor this parameter.
+   */
+  availabilityWindowOverride: number;
+  /**
+   * If <code>true</code>, the audio tracks are ignored.
+   * Defaults to <code>false</code>.
+   */
+  disableAudio: boolean;
+  /**
+   * If <code>true</code>, the video tracks are ignored.
+   * Defaults to <code>false</code>.
+   */
+  disableVideo: boolean;
+  /**
+   * If <code>true</code>, the text tracks are ignored.
+   * Defaults to <code>false</code>.
+   */
+  disableText: boolean;
+  /**
+   * If <code>true</code>, the image tracks are ignored.
+   * Defaults to <code>false</code>.
+   */
+  disableThumbnails: boolean;
+  /**
+   * A default <code>presentationDelay</code> value.
+   * For DASH, it's a default <code>presentationDelay</code> value if
+   * <code>suggestedPresentationDelay</code> is missing in the MPEG DASH
+   * manifest. The default value is <code>1.5 * minBufferTime</code> if not
+   * configured or set as 0.
+   * For HLS, the default value is 3 segments duration if not configured or
+   * set as 0.
+   */
+  defaultPresentationDelay: number;
+  /**
+   *  Option to calculate VTT text timings relative to the segment start
+   *  instead of relative to the period start (which is the default).
+   *  Defaults to <code>false</code>.
+   */
+  segmentRelativeVttTiming: boolean;
+  // Advanced parameters used by the DASH manifest parser.
+  dash: DashManifestConfiguration;
+  // Advanced parameters used by the HLS manifest parser.
+  hls: HlsManifestConfiguration;
+  // Advanced parameters used by the MSS manifest parser.
+  mss: MssManifestConfiguration;
+  /**
+   * If true, manifest update request failures will cause a fatal error.
+   * Defaults to <code>false</code> if not provided.
+   */
+  raiseFatalErrorOnManifestUpdateRequestFailure: boolean;
+}
+
+/**
+ * @description
+ * Contains information about a region of the timeline that will cause an event
+ * to be raised when the playhead enters or exits it.  In DASH this is the
+ * EventStream element.
+ */
+export interface TimelineRegionInfo {
+  //  Identifies the message scheme.
+  schemeIdUri: string;
+  // Specifies the value for the region.
+  value: string;
+  // The presentation time (in seconds) that the region should start.
+  startTime: number;
+  // The presentation time (in seconds) that the region should end.
+  endTime: number;
+  // Specifies an identifier for this instance of the region.
+  id: string;
+  /**
+   * <b>DEPRECATED</b>: Use eventElement instead.
+   * The XML element that defines the Event.
+   * @deprecated
+   */
+  eventElement: Element;
+  // The XML element that defines the Event.
+  eventNode: XmlNode;
+}
+
+/**
+ *  metadata frame parsed.
+ */
+export interface MetadataFrame {
+  key: string;
+  data: ArrayBuffer | string | number;
+  description: string;
+  mimeType?: string;
+  pictureType?: number;
 }
