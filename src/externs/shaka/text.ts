@@ -61,30 +61,18 @@ export interface TextParser {
 
 /**
  * A collection of time offsets used to adjust text cue times.
- *
- * @typedef {{
- *   periodStart: number,
- *   segmentStart: number,
- *   segmentEnd: number,
- *   vttOffset: number
- * }}
- *
- * @property {number} periodStart
- *     The absolute start time of the period in seconds.
- * @property {number} segmentStart
- *     The absolute start time of the segment in seconds.
- * @property {number} segmentEnd
- *     The absolute end time of the segment in seconds.
- * @property {number} vttOffset
- *     The start time relative to either segment or period start depending
- *     on <code>segmentRelativeVttTiming</code> configuration.
- *
- * @exportDoc
  */
 export interface TimeContext {
+  // The absolute start time of the period in seconds.
   periodStart: number;
+  // The absolute start time of the segment in seconds.
   segmentStart: number;
+  // The absolute end time of the segment in seconds.
   segmentEnd: number;
+  /**
+   * The start time relative to either segment or period start depending
+   * on <code>segmentRelativeVttTiming</code> configuration.
+   */
   vttOffset: number;
 }
 
@@ -95,11 +83,7 @@ export interface TimeContext {
  * You can edit the cue object passed in.
  * @exportDoc
  */
-export type ModifyCueCallback = (
-  cue: Cue,
-  uri?: string | null,
-  timeContext?: TimeContext
-) => void;
+export type ModifyCueCallback = (cue: Cue, uri?: string | null, timeContext?: TimeContext) => void;
 
 /**
  * @typedef {function():!shaka.extern.TextParser}
@@ -123,9 +107,6 @@ export type TextParserPlugin = () => TextParser;
  * control text visibility outside the Player methods, you must set the
  * <code>streaming.alwaysStreamText</code> Player configuration value to
  * <code>true</code>.
- *
- * @interface
- * @extends {shaka.util.IDestroyable}
  * @exportDoc
  */
 export interface TextDisplayer {
@@ -190,7 +171,6 @@ export interface TextDisplayer {
 /**
  * A factory for creating a TextDisplayer.
  *
- * @typedef {function():!shaka.extern.TextDisplayer}
  * @exportDoc
  */
 export type TextDisplayerFactory = () => TextDisplayer;

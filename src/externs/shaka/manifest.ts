@@ -105,6 +105,21 @@ export interface Manifest {
   // The next url to play.
   nextUrl?: string;
 }
+/**
+ * @description Contains the streams from one DASH period
+ */
+export interface Period {
+  // The Period ID.
+  id: string;
+  // The audio streams from one Period.
+  audioStreams: Stream[];
+  // The video streams from one Period.
+  videoStream: Stream[];
+  // The text streams from one Period.
+  textStreams: Stream[];
+  // The image streams from one Period.
+  imageStreams: Stream[];
+}
 
 /**
  * Maximum and minimum latency and playback rate for a manifest. When max

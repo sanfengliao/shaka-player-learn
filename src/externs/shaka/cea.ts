@@ -95,28 +95,11 @@ export interface ICaptionDecoder {
   getStreams(): string[];
 }
 
-/**
- * Parsed Cue.
- * @typedef {{
- *   cue: !shaka.text.Cue,
- *   stream: string
- * }}
- *
- * @exportDoc
- */
 export interface ClosedCaption {
   cue: Cue;
   stream: string;
 }
 
-/**
- * @typedef {function():!shaka.extern.ICeaParser}
- * @exportDoc
- */
 export type CeaParserPlugin = () => ICeaParser;
 
-/**
- * @typedef {function():!shaka.extern.ICaptionDecoder}
- * @exportDoc
- */
 export type CaptionDecoderPlugin = () => ICaptionDecoder;
