@@ -377,7 +377,7 @@ export interface XmlNode {
   tagName: string;
   attributes: Record<string, any>;
   children: (string | XmlNode)[];
-  parant?: XmlNode;
+  parent?: XmlNode | null;
 }
 
 /**
