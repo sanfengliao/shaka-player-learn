@@ -155,7 +155,7 @@ export class SegmentReference {
   appendWindowStart: number;
   appendWindowEnd: number;
   partialReferences: SegmentReference[];
-  tilesLayout: string | null;
+  tilesLayout: string;
   tileDuration: number | null;
   syncTime: number | null;
   status: number;
@@ -234,8 +234,8 @@ export class SegmentReference {
     endTime: number,
     uris: () => string[],
     startByte: number,
-    endByte: number,
-    initSegmentReference: InitSegmentReference,
+    endByte: number | null,
+    initSegmentReference: InitSegmentReference | null,
     timestampOffset: number,
     appendWindowStart: number,
     appendWindowEnd: number,

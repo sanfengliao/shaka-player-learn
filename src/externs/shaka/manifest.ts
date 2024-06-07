@@ -1,4 +1,6 @@
 import { PresentationTimeline } from '../../lib/media/presentation_timeline';
+import { SegmentIndex } from '../../lib/media/segment_index';
+import { SegmentReference } from '../../lib/media/segment_reference';
 import { StreamDB } from './offline';
 
 /**
@@ -181,8 +183,8 @@ export interface Stream {
   groupId?: string;
   createSegmentIndex: CreateSegmentIndexFunction;
   closeSegmentIndex: () => void;
-  // TODO: SegmentIndex
-  segmentIndex: shaka.media.SegmentIndex;
+
+  segmentIndex: SegmentIndex;
   mimeType: string;
   codecs: string;
   frameRate: number | undefined;
@@ -344,4 +346,44 @@ export interface AesKey {
    * undefined.
    */
   firstMediaSequenceNumber: number;
+}
+/**
+ *  * SegmentIndex minimal API
+ */
+export interface ISegmentIndex {
+  /**
+   * Get number of references.
+   * @return {number}
+   * @exportDoc
+   */
+  getNumReferences(): number;
+
+  /**
+   * Finds the position of the segment for the given time, in seconds, relative
+   * to the start of the presentation.  Returns the position of the segment
+   * with the largest end time if more than one segment is known for the given
+   * time.
+   *
+   * @param  time
+   * @return  The position of the segment, or null if the position of
+   *   the segment could not be determined.
+   * @exportDoc
+   */
+  find(time: number): number | null;
+
+  /**
+   * Gets the SegmentReference for the segment at the given position.
+   *
+   * @param  position The position of the segment as returned by find().
+   * @return  The SegmentReference, or null if
+   *   no such SegmentReference exists.
+   * @exportDoc
+   */
+  get(position: number): SegmentReference | null;
+
+  /**
+   * Gets number of already evicted segments.
+   * @exportDoc
+   */
+  getNumEvicted(): number;
 }
