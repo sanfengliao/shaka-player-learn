@@ -33,8 +33,7 @@ export class BufferUtils {
     // Quickly check if these are views of the same buffer.  An ArrayBuffer can
     // be passed but doesn't have a byteOffset field, so default to 0.
     if (
-      BufferUtils.unsafeGetArrayBuffer_(arr1) ==
-        BufferUtils.unsafeGetArrayBuffer_(arr2) &&
+      BufferUtils.unsafeGetArrayBuffer_(arr1) == BufferUtils.unsafeGetArrayBuffer_(arr2) &&
       // @ts-ignore
       (arr1.byteOffset || 0) == (arr2.byteOffset || 0)
     ) {

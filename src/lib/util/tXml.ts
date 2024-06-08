@@ -417,8 +417,8 @@ export class TXml {
 
   /**
    * Gets the text contents of a node.
-   * @param {!shaka.extern.xml.Node} node The XML element.
-   * @return {?string} The text contents, or null if there are none.
+   * @param  node The XML element.
+   * @return  The text contents, or null if there are none.
    */
   static getContents(node: XmlNode) {
     if (!Array.from(node.children).every((n) => typeof n === 'string')) {
@@ -528,16 +528,16 @@ export class TXml {
    * @param {!shaka.extern.xml.Node} elem The parent XML element.
    * @param {string} ns The child XML element's namespace URI.
    * @param {string} name The child XML element's local name.
-   * @return {!Array.<!shaka.extern.xml.Node>} The child XML elements.
+   * @return The child XML elements.
    */
-  static findChildrenNS(elem: XmlNode, ns: string, name: string) {
+  static findChildrenNS(elem: XmlNode, ns: string, name: string): XmlNode[] {
     const schemaNS = TXml.getKnownNameSpace(ns);
-    const found = [];
+    const found: XmlNode[] = [];
     if (elem.children) {
       for (const child of elem.children) {
         // @ts-expect-error
         if (child && child.tagName === `${schemaNS}:${name}`) {
-          found.push(child);
+          found.push(child as XmlNode);
         }
       }
     }

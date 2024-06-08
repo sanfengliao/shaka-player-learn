@@ -68,7 +68,7 @@ export class Mp4Parser {
    *   box is detected.
    * @export
    */
-  parse(data: BufferSource, partialOkay: boolean, stopOnPartial: boolean) {
+  parse(data: BufferSource, partialOkay = false, stopOnPartial = false) {
     const reader = new DataViewReader(data, DataViewReaderEndianness.BIG_ENDIAN);
 
     this.done_ = false;

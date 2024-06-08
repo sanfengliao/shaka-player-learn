@@ -55,15 +55,11 @@ export class ManifestParserUtils {
   /**
    * Creates a DrmInfo object from the given info.
    *
-   * @param {string} keySystem
-   * @param {string} encryptionScheme
+   * @param  keySystem
+   * @param  encryptionScheme
    * @param  initData
    */
-  static createDrmInfo(
-    keySystem: string,
-    encryptionScheme: string,
-    initData: InitDataOverride[]
-  ): DrmInfo {
+  static createDrmInfo(keySystem: string, encryptionScheme: string, initData?: InitDataOverride[] | null): DrmInfo {
     return {
       keySystem,
       encryptionScheme,
@@ -83,14 +79,11 @@ export class ManifestParserUtils {
   /**
    * Creates a DrmInfo object from ClearKeys.
    *
-   * @param {!Map.<string, string>} clearKeys
-   * @param {string=} encryptionScheme
-   * @return {shaka.extern.DrmInfo}
+   * @param  clearKeys
+   * @param encryptionScheme
+   * @return
    */
-  static createDrmInfoFromClearKeys(
-    clearKeys: Map<string, string>,
-    encryptionScheme = 'cenc'
-  ): DrmInfo {
+  static createDrmInfoFromClearKeys(clearKeys: Map<string, string>, encryptionScheme = 'cenc'): DrmInfo {
     const keys: {
       kty: string;
       kid: string;
@@ -150,9 +143,9 @@ export class ManifestParserUtils {
    * content type.
    * Assumes that at least one codec is correct, and throws if none are.
    *
-   * @param {string} contentType
-   * @param {!Array.<string>} codecs
-   * @return {string}
+   * @param contentType
+   * @param codecs
+   * @return
    */
   static guessCodecs(contentType: string, codecs: string[]): string {
     if (codecs.length == 1) {
@@ -180,9 +173,9 @@ export class ManifestParserUtils {
    * content type. Does not assume a single codec is anything special, and does
    * not throw if it fails to match.
    *
-   * @param {string} contentType
-   * @param {!Array.<string>} codecs
-   * @return {?string} or null if no match is found
+   * @param contentType
+   * @param codecs
+   * @return or null if no match is found
    */
   static guessCodecsSafe(contentType: string, codecs: string[]) {
     const formats =
@@ -208,9 +201,9 @@ export class ManifestParserUtils {
    * Attempts to guess which codecs from the codecs list belong to a given
    * content.
    *
-   * @param {string} contentType
-   * @param {!Array.<string>} codecs
-   * @return {!Array.<string>}
+   * @param contentType
+   * @param codecs
+   * @return
    */
   static guessAllCodecsSafe(contentType: string, codecs: string[]) {
     const allCodecs = [];
