@@ -121,7 +121,7 @@ export class SegmentBase {
    * @return {!Promise.<shaka.media.SegmentIndex>}
    * @private
    */
-  static generateSegmentIndex_(
+  private static generateSegmentIndex_(
     context: DashParserContext,
     requestSegment: DashParserRequestSegmentCallback,
     initSegmentReference: InitSegmentReference,
@@ -149,7 +149,7 @@ export class SegmentBase {
    * @return {!Array.<string>}
    * @private
    */
-  static computeIndexUris_(context: DashParserContext) {
+  private static computeIndexUris_(context: DashParserContext) {
     const representationIndex = MpdUtils.inheritChild(context, SegmentBase.fromInheritance_, 'RepresentationIndex');
 
     let indexUris = context.representation!.getBaseUris();
@@ -299,7 +299,7 @@ export class SegmentBase {
 
     let indexRange = TXml.parseRange(indexRangeElem || '');
     if (representationIndex) {
-      indexRange = TXml.parseAttr(representationIndex, 'range', TXml.parseRange, indexRange);
+      indexRange = TXml.parseAttr(representationIndex, 'range', TXml.parseRange, indexRange)!;
     }
     return indexRange;
   }

@@ -526,7 +526,7 @@ export interface MpdUtilsSegmentInfo {
   // The time-scale of the representation.
   timescale: number;
   // The duration of the segments in seconds, if given.
-  segmentDuration?: number | null;
+  segmentDuration: number | null;
   // The start number of the segments; 1 or greater.
   startNumber: number;
   // The presentation time offset of the representation, in seconds.

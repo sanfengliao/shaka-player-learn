@@ -503,15 +503,15 @@ export class TXml {
     elem: XmlNode,
     name: string,
     parseFunction: (value: string) => T | null,
-    defaultValue: T | null = null
-  ) {
+    defaultValue?: T
+  ): T | undefined {
     let parsedValue = null;
 
     const value = elem.attributes[name];
     if (value != null) {
       parsedValue = parseFunction(value);
     }
-    return parsedValue == null ? defaultValue : parsedValue;
+    return parsedValue ?? defaultValue;
   }
 
   /**
