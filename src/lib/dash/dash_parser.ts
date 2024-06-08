@@ -1,10 +1,52 @@
-import { XmlNode } from '../../externs/shaka';
-import { AesKey, DrmInfo, Stream } from '../../externs/shaka/manifest';
+import { ManifestConfiguration, XmlNode } from '../../externs/shaka';
+import { AesKey, DrmInfo, Manifest, Stream } from '../../externs/shaka/manifest';
+import { ManifestParserPlayerInterface } from '../../externs/shaka/manifest_parser';
 import { PresentationTimeline } from '../media/presentation_timeline';
 import { SegmentIndex } from '../media/segment_index';
 
 export class DashParser {
   private static SCTE214_ = 'urn:scte:dash:scte214-extensions';
+  private config_: ManifestConfiguration | null = null;
+  private playerInterface_: ManifestParserPlayerInterface | null = null;
+  private manifestUris_: string[] = [];
+  private manifest_: Manifest | null = null;
+  private globalId_ = 1;
+  private patchLocationNodes_: XmlNode[] = [];
+  /**
+   * A context of the living manifest used for processing
+   * Patch MPD's
+   */
+  private manifestPatchContext_: DashParserPatchContext = {
+    mpdId: '',
+    type: '',
+    profiles: [],
+    mediaPresentationDuration: null,
+    availabilityTimeOffset: 0,
+    getBaseUris: null,
+    publishTime: 0,
+  };
+
+  /**
+   * This is a cache is used the store a snapshot of the context
+   * object which is built up throughout node traversal to maintain
+   * a current state. This data needs to be preserved for parsing
+   * patches.
+   * The key is a combination period and representation id's.
+   *
+   */
+  private contextCache_: Map<string, DashParserContext> = new Map();
+  /**
+   * A map of IDs to Stream objects.
+   * ID: Period@id,AdaptationSet@id,@Representation@id
+   * e.g.: '1,5,23'
+   *
+   */
+  private streamMap_: Record<string, Stream> = {};
+
+  /**
+   * A map of period ids to their durations
+   */
+  private periodDurations_: Record<string, number> = {};
 }
 
 export interface DashParserPatchContext {
@@ -13,7 +55,7 @@ export interface DashParserPatchContext {
   // Specifies the type of the dash manifest i.e. "static"
   type: string;
   // Media presentation duration, or null if unknown.
-  mediaPresentationDuration: number;
+  mediaPresentationDuration: number | null;
   /**
    * Profiles of DASH are defined to enable interoperability and the
    * signaling of the use of features.
@@ -22,15 +64,15 @@ export interface DashParserPatchContext {
   // Specifies the total availabilityTimeOffset of the segment.
   availabilityTimeOffset: number;
   // An array of absolute base URIs.
-  getBaseUris?: () => string[];
+  getBaseUris?: (() => string[]) | null;
   // Time when manifest has been published, in seconds.
   publishTime: number;
 }
 
 export type DashParserRequestSegmentCallback = (
   uris: string[],
-  startByte?: number,
-  endByte?: number,
+  startByte: number | null,
+  endByte: number | null,
   isInit?: boolean
 ) => Promise<BufferSource>;
 
@@ -66,7 +108,7 @@ export interface DashParserInheritanceFrame {
   // The inherited pixel aspect ratio value.
   emsgSchemeIdUris: string[];
   // The ID of the element.
-  id?: string;
+  id: string | null;
   // The original language of the element.
   language?: string;
   // The number of audio channels, or null if unknown.

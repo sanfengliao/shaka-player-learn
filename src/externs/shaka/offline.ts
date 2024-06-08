@@ -13,7 +13,7 @@ export interface StreamDB {
    * The ID of the stream's parent element. In DASH, this will be a unique
    * ID that represents the representation's parent adaptation element
    */
-  groupId?: string;
+  groupId: string | null;
   /**
    *  Whether the stream set was primary.
    */
@@ -45,13 +45,13 @@ export interface StreamDB {
   // The language of the stream; '' for video.
   language: string;
   // The original language, if any, that appeared in the manifest.
-  originalLanguage?: string;
+  originalLanguage: string | null;
   // The label of the stream; '' for video.
-  label?: string;
+  label: string | null;
   // The width of the stream; null for audio/text.
-  width?: number;
+  width: number | null;
   // The height of the stream; null for audio/text.
-  height?: number;
+  height: number | null;
   // Whether this stream is encrypted.
   encrypted: boolean;
   // The key IDs this stream is encrypted with.
@@ -68,9 +68,9 @@ export interface StreamDB {
   // Whether the stream set was forced.
   forced: boolean;
   // The channel count information for the audio stream.
-  channelsCount?: number;
+  channelsCount: number | null;
   // Specifies the maximum sampling rate of the content.
-  audioSamplingRate?: number;
+  audioSamplingRate: number | null;
   // Whether the stream set has spatial audio.
   spatialAudio: boolean;
   /**
@@ -81,7 +81,7 @@ export interface StreamDB {
    * provided by the description we'll set the same value as channel number.
    * Example: {'CC1': 'eng'; 'CC3': 'swe'}, or {'1', 'eng'; '2': 'swe'}, etc.
    */
-  closedCaptions: Map<string, string>;
+  closedCaptions: Map<string, string> | null;
   /**
    * The value is a grid-item-dimension consisting of two positive decimal
    * integers in the format: column-x-row ('4x3'). It describes the arrangement
