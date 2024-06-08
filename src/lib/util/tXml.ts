@@ -769,7 +769,7 @@ export class TXml {
    * @param  nodes
    * @param  patchNode
    */
-  static modifyNodes(nodes: XmlNode, patchNode: XmlNode) {
+  static modifyNodes(nodes: XmlNode[], patchNode: XmlNode) {
     const paths = TXml.parseXpath(patchNode.attributes['sel'] || '');
     if (!paths.length) {
       return;
@@ -779,7 +779,6 @@ export class TXml {
 
     let index = lastNode.position!;
     if (index === null) {
-      // @ts-expect-error
       index = position === 'prepend' ? 0 : nodes.length;
     } else if (position === 'prepend') {
       --index;
@@ -791,17 +790,15 @@ export class TXml {
 
     // Modify attribute
     if (attribute) {
-      // @ts-expect-error
       TXml.modifyNodeAttribute(nodes[index], action, attribute, TXml.getContents(patchNode) || '');
       // Rearrange nodes
     } else {
       if (action === 'remove' || action === 'replace') {
-        // @ts-expect-error
         nodes.splice(index, 1);
       }
       if (action === 'add' || action === 'replace') {
-        const newNodes = patchNode.children;
-        // @ts-expect-error
+        const newNodes = patchNode.children as XmlNode[];
+
         nodes.splice(index, 0, ...newNodes);
       }
     }

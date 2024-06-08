@@ -594,6 +594,18 @@ export class SegmentReference {
   getSegmentData() {
     return this.segmentData;
   }
+
+  /**
+   * Updates the init segment reference and propagates the update to all partial
+   * references.
+   * @param initSegmentReference
+   */
+  updateInitSegmentReference(initSegmentReference: InitSegmentReference | null) {
+    this.initSegmentReference = initSegmentReference;
+    for (const partialReference of this.partialReferences) {
+      partialReference.updateInitSegmentReference(initSegmentReference);
+    }
+  }
 }
 
 export const enum SegmentReferenceStatus {

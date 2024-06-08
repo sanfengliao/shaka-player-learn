@@ -23,7 +23,7 @@ export class Mp4SegmentIndexParser {
     sidxData: BufferSource,
     sidxOffset: number,
     uris: string[],
-    initSegmentReference: InitSegmentReference,
+    initSegmentReference: InitSegmentReference | null,
     timestampOffset: number,
     appendWindowStart: number,
     appendWindowEnd: number
@@ -74,7 +74,7 @@ export class Mp4SegmentIndexParser {
    */
   static parseSIDX_(
     sidxOffset: number,
-    initSegmentReference: InitSegmentReference,
+    initSegmentReference: InitSegmentReference | null,
     timestampOffset: number,
     appendWindowStart: number,
     appendWindowEnd: number,

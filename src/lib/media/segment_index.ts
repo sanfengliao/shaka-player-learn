@@ -307,7 +307,7 @@ export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<Segmen
    * @export
    */
 
-  updateEvery(interval: number, updateCallback: () => SegmentReference[] | undefined) {
+  updateEvery(interval: number, updateCallback: () => SegmentReference[] | null) {
     if (this.immutable_) {
       return;
     }
@@ -679,7 +679,7 @@ export class MetaSegmentIndex extends SegmentIndex {
    * @override
    * @export
    */
-  updateEvery(interval: number, updateCallback: () => SegmentReference[] | undefined) {
+  updateEvery(interval: number, updateCallback: () => SegmentReference[] | null) {
     // updateEvery() is only used internally by the DASH parser on
     // SegmentIndexes, but never on MetaSegmentIndex.
     asserts.assert(false, 'updateEvery() should not be used in MetaSegmentIndex!');

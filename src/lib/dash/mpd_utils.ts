@@ -28,13 +28,13 @@ export class MpdUtils {
    */
   static fillUriTemplate(
     uriTemplate: string,
-    representationId?: string,
-    number?: string,
-    subNumber?: string,
-    bandwidth?: string,
-    time?: number | bigint
+    representationId: string | null,
+    number: string | number | null,
+    subNumber: string | number | null,
+    bandwidth: string | number | null,
+    time: number | bigint | null
   ) {
-    const valueTable: Record<string, string | number | bigint | undefined> = {
+    const valueTable: Record<string, string | number | bigint | null> = {
       RepresentationID: representationId,
       Number: number,
       SubNumber: subNumber,

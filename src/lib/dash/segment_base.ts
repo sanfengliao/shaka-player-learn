@@ -178,10 +178,10 @@ export class SegmentBase {
   static async generateSegmentIndexFromUris(
     context: DashParserContext,
     requestSegment: DashParserRequestSegmentCallback,
-    initSegmentReference: InitSegmentReference,
+    initSegmentReference: InitSegmentReference | null,
     uris: string[],
     startByte: number,
-    endByte: number,
+    endByte: number | null,
     scaledPresentationTimeOffset: number
   ): Promise<SegmentIndex> {
     // Unpack context right away, before we start an async process.
@@ -199,9 +199,9 @@ export class SegmentBase {
       localRequest(uris, startByte, endByte, /* isInit= */ false),
       containerType == 'webm'
         ? localRequest(
-            initSegmentReference.getUris(),
-            initSegmentReference.startByte,
-            initSegmentReference.endByte!,
+            initSegmentReference!.getUris(),
+            initSegmentReference!.startByte,
+            initSegmentReference!.endByte!,
             true
           )
         : null,
@@ -231,7 +231,7 @@ export class SegmentBase {
         indexData!,
         initData!,
         uris,
-        initSegmentReference,
+        initSegmentReference!,
         timestampOffset,
         appendWindowStart,
         appendWindowEnd
