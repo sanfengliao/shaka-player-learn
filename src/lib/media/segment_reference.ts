@@ -20,7 +20,7 @@ import { BufferUtils } from '../util/buffer_utils';
 export class InitSegmentReference {
   getUris: () => string[];
   startByte: number;
-  endByte: number;
+  endByte: number | null;
   mediaQuality: MediaQualityInfo | null;
   timescale: number | null;
   segmentData: BufferSource | null;
@@ -45,7 +45,7 @@ export class InitSegmentReference {
   constructor(
     uris: () => string[],
     startByte: number,
-    endByte: number,
+    endByte: number | null,
     mediaQuality: MediaQualityInfo | null = null,
     timescale: number | null = null,
     segmentData: BufferSource | null = null,

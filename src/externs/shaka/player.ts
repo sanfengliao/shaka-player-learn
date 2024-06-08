@@ -335,15 +335,15 @@ export interface MediaQualityInfo {
   /**
    * The video frame rate.
    */
-  frameRate?: number;
+  frameRate?: number | null;
   /**
    * The video height in pixels.
    */
-  height?: number;
+  height?: number | null;
   /**
    * The video width in pixels.
    */
-  width?: number;
+  width?: number | null;
   /**
    * The MIME type.
    */
@@ -355,7 +355,7 @@ export interface MediaQualityInfo {
   /**
    * The pixel aspect ratio value; e.g. "1:1".
    */
-  pixelAspectRatio?: string;
+  pixelAspectRatio?: string | null;
 }
 
 export interface PlayerConfiguration {

@@ -499,7 +499,12 @@ export class TXml {
    *   default value if the attribute does not exist or could not be parsed.
    * @template T
    */
-  static parseAttr<T>(elem: XmlNode, name: string, parseFunction: (value: string) => T | null, defaultValue = null) {
+  static parseAttr<T>(
+    elem: XmlNode,
+    name: string,
+    parseFunction: (value: string) => T | null,
+    defaultValue: T | null = null
+  ) {
     let parsedValue = null;
 
     const value = elem.attributes[name];

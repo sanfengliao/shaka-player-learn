@@ -9,7 +9,7 @@ import { ShakaError } from '../util/error';
 import { Functional } from '../util/functional';
 import { ManifestParserUtils } from '../util/manifest_parser_utils';
 import { TXml } from '../util/tXml';
-import { DashParserContext, DashParserInheritanceFrame } from './dash_parser';
+import { DashParserContext, DashParserInheritanceFrame, GetFrameNode } from './dash_parser';
 
 export class MpdUtils {
   private static XlinkNamespaceUri_ = 'http://www.w3.org/1999/xlink';
@@ -300,11 +300,7 @@ export class MpdUtils {
     };
   }
 
-  static inheritAttribute(
-    context: DashParserContext,
-    callback: (frame?: DashParserInheritanceFrame) => XmlNode,
-    attribute: string
-  ) {
+  static inheritAttribute(context: DashParserContext, callback: GetFrameNode, attribute: string) {
     const nodes = MpdUtils.getNodes(context, callback);
 
     let result = null;
@@ -324,12 +320,12 @@ export class MpdUtils {
    *    ?shaka.extern.xml.Node} callback
    * @return {!Array.<!shaka.extern.xml.Node>}
    */
-  static getNodes(context: DashParserContext, callback: (frame?: DashParserInheritanceFrame) => XmlNode) {
+  static getNodes(context: DashParserContext, callback: GetFrameNode) {
     asserts.assert(callback(context.representation), 'There must be at least one element of the given type.');
 
     return [callback(context.representation), callback(context.adaptationSet), callback(context.period)].filter(
       Functional.isNotNull
-    );
+    ) as XmlNode[];
   }
 
   /**
@@ -342,11 +338,7 @@ export class MpdUtils {
    * @param {string} child
    * @return {?shaka.extern.xml.Node}
    */
-  static inheritChild(
-    context: DashParserContext,
-    callback: (frame?: DashParserInheritanceFrame) => XmlNode,
-    child: string
-  ) {
+  static inheritChild(context: DashParserContext, callback: GetFrameNode, child: string) {
     const nodes = MpdUtils.getNodes(context, callback);
 
     let result = null;

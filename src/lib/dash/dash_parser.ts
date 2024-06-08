@@ -28,10 +28,10 @@ export interface DashParserPatchContext {
 }
 
 export type DashParserRequestSegmentCallback = (
-  a: string[],
-  b?: number,
-  c?: number,
-  d?: boolean
+  uris: string[],
+  startByte?: number,
+  endByte?: number,
+  isInit?: boolean
 ) => Promise<BufferSource>;
 
 /**
@@ -54,10 +54,15 @@ export interface DashParserInheritanceFrame {
   height?: number;
   // The inherited media type.
   mimeType: string;
+  // The inherited media type.
+  contentType: string;
   // The inherited codecs value.
   codecs: string;
   // The inherited framerate value.
   frameRate?: number;
+  // The inherited pixel aspect ratio value.
+  pixelAspectRatio?: string;
+
   // The inherited pixel aspect ratio value.
   emsgSchemeIdUris: string[];
   // The ID of the element.
@@ -167,3 +172,5 @@ export interface DashParserStreamInfo {
   // An async function to create the SegmentIndex for the stream.
   generateSegmentIndex: DashParserGenerateSegmentIndexFunction;
 }
+
+export type GetFrameNode = (frame?: DashParserInheritanceFrame) => XmlNode | undefined;
