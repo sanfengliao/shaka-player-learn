@@ -348,7 +348,7 @@ export class TXml {
    * @param elem The XML element.
    * @return  Is the element a TXml node
    */
-  static isNode(elem: XmlNode) {
+  static isNode(elem: any): elem is XmlNode {
     return !!elem.tagName;
   }
 
@@ -385,15 +385,15 @@ export class TXml {
    * @param name The child XML element's tag name.
    * @return The child XML elements.
    */
-  static findChildren(elem: XmlNode, name: string) {
-    const found = [];
+  static findChildren(elem: XmlNode, name: string): XmlNode[] {
+    const found: XmlNode[] = [];
     if (!elem.children) {
       return [];
     }
     for (const child of elem.children) {
       // @ts-expect-error
       if (child.tagName === name) {
-        found.push(child);
+        found.push(child as XmlNode);
       }
     }
     return found;
