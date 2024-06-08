@@ -164,7 +164,7 @@ export interface InitDataOverride {
   /**
    * The key Id that corresponds to this initData.
    */
-  keyId?: string;
+  keyId?: string | null;
 }
 
 /**
