@@ -258,7 +258,6 @@ export class Cue {
 
   /**
    * Text font style. Normal, italic or oblique.
-   * @type {shaka.text.Cue.fontStyle}
    * @export
    */
   fontStyle = Cue.fontStyle.NORMAL;
@@ -477,11 +476,7 @@ export class Cue {
     // performance optimization.  We can avoid the more expensive recursive
     // checks if the top-level properties don't match.
     // See: https://github.com/shaka-project/shaka-player/issues/3018
-    if (
-      cue1.startTime != cue2.startTime ||
-      cue1.endTime != cue2.endTime ||
-      cue1.payload != cue2.payload
-    ) {
+    if (cue1.startTime != cue2.startTime || cue1.endTime != cue2.endTime || cue1.payload != cue2.payload) {
       return false;
     }
     for (const k in cue1) {

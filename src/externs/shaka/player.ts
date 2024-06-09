@@ -1,5 +1,9 @@
 import { AutoShowText } from '../../lib/config/auto_show_text';
+import { CodecSwitchingStrategy } from '../../lib/config/codec_switching_strategy';
+import { ShakaError } from '../../lib/util/error';
+import { AbrManagerFactory } from './abr_manager';
 import { RetryParameters } from './net';
+import { ModifyCueCallback, TextDisplayerFactory } from './text';
 
 export interface AdvancedAbrConfiguration {
   /**
@@ -83,74 +87,6 @@ export interface Restrictions {
 }
 
 /**
- * @typedef {{
- *   enabled: boolean,
- *   useNetworkInformation: boolean,
- *   defaultBandwidthEstimate: number,
- *   restrictions: shaka.extern.Restrictions,
- *   switchInterval: number,
- *   bandwidthUpgradeTarget: number,
- *   bandwidthDowngradeTarget: number,
- *   advanced: shaka.extern.AdvancedAbrConfiguration,
- *   restrictToElementSize: boolean,
- *   restrictToScreenSize: boolean,
- *   ignoreDevicePixelRatio: boolean,
- *   clearBufferSwitch: boolean,
- *   safeMarginSwitch: number
- * }}
- *
- * @property {boolean} enabled
- *   If true, enable adaptation by the current AbrManager.  Defaults to true.
- * @property {boolean} useNetworkInformation
- *   If true, use Network Information API in the current AbrManager.
- *   Defaults to true.
- * @property {number} defaultBandwidthEstimate
- *   The default bandwidth estimate to use if there is not enough data, in
- *   bit/sec.
- * @property {shaka.extern.Restrictions} restrictions
- *   The restrictions to apply to ABR decisions.  These are "soft" restrictions.
- *   Any track that fails to meet these restrictions will not be selected
- *   automatically, but will still appear in the track list and can still be
- *   selected via <code>selectVariantTrack()</code>.  If no tracks meet these
- *   restrictions, AbrManager should not fail, but choose a low-res or
- *   low-bandwidth variant instead.  It is the responsibility of AbrManager
- *   implementations to follow these rules and implement this behavior.
- * @property {number} switchInterval
- *   The minimum amount of time that must pass between switches, in
- *   seconds. This keeps us from changing too often and annoying the user.
- * @property {number} bandwidthUpgradeTarget
- *   The fraction of the estimated bandwidth which we should try to use when
- *   upgrading.
- * @property {number} bandwidthDowngradeTarget
- *   The largest fraction of the estimated bandwidth we should use. We should
- *   downgrade to avoid this.
- * @property {shaka.extern.AdvancedAbrConfiguration} advanced
- *   Advanced ABR configuration
- * @property {boolean} restrictToElementSize
- *   If true, restrict the quality to media element size.
- *   Note: The use of ResizeObserver is required for it to work properly. If
- *   true without ResizeObserver, it behaves as false.
- *   Defaults false.
- * @property {boolean} restrictToScreenSize
- *   If true, restrict the quality to screen size.
- *   Defaults false.
- * @property {boolean} ignoreDevicePixelRatio
- *   If true,device pixel ratio is ignored when restricting the quality to
- *   media element size or screen size.
- *   Defaults false.
- * @property {boolean} clearBufferSwitch
- *   If true, the buffer will be cleared during the switch.
- *   The default automatic behavior is false to have a smoother transition.
- *   On some device it's better to clear buffer.
- *   Defaults false.
- * @property {number} safeMarginSwitch
- *   Optional amount of buffer (in seconds) to
- *   retain when clearing the buffer during the automatic switch.
- *   Useful for switching variant quickly without causing a buffering event.
- *   Defaults to 0 if not provided. Ignored if clearBuffer is false.
- *   Can cause hiccups on some browsers if chosen too small, e.g.
- *   The amount of two segments is a fair minimum to consider as safeMargin
- *   value.
  * @exportDoc
  */
 export interface AbrConfiguration {
@@ -358,6 +294,456 @@ export interface MediaQualityInfo {
   pixelAspectRatio?: string | null;
 }
 
+// TODO: 实现DRM功能
+export interface DrmConfiguration {}
+
+/**
+ * The StreamingEngine's configuration options.
+ */
+export interface StreamingConfiguration {
+  // Retry parameters for segment requests.
+  retryParameters: RetryParameters;
+  /**
+   * A callback to decide what to do on a streaming failure.  Default behavior
+   * is to retry on live streams and not on VOD.
+   */
+  failureCallback: (error: ShakaError) => void;
+  /**
+   * The minimum number of seconds of content that the StreamingEngine must
+   * buffer before it can begin playback or can continue playback after it has
+   * entered into a buffering state (i.e., after it has depleted one more
+   * more of its buffers).
+   */
+  rebufferingGoal: number;
+  /**
+   * The number of seconds of content that the StreamingEngine will attempt to
+   * buffer ahead of the playhead. This value must be greater than or equal to
+   * the rebuffering goal.
+   */
+  bufferingGoal: number;
+  /**
+   * The minimum duration in seconds of buffer overflow the StreamingEngine
+   * requires to start removing content from the buffer.
+   * Values less than <code>1.0</code> are not recommended.
+   */
+  evictionGoal: number;
+  /**
+   * If <code>true</code>, the player will ignore text stream failures and
+   * continue playing other streams.
+   */
+  ignoreTextStreamFailures: boolean;
+  /**
+   * If <code>true</code>, always stream text tracks, regardless of whether or
+   * not they are shown.  This is necessary when using the browser's built-in
+   * controls, which are not capable of signaling display state changes back to
+   * Shaka Player.
+   * Defaults to <code>false</code>.
+   */
+  alwaysStreamText: boolean;
+  /**
+   * If <code>true</code>, adjust the start time backwards so it is at the start
+   * of a segment. This affects both explicit start times and calculated start
+   * time for live streams. This can put us further from the live edge. Defaults
+   * to <code>false</code>.
+   */
+  startAtSegmentBoundary: boolean;
+
+  /**
+   * The maximum distance (in seconds) before a gap when we'll automatically
+   * ump. This value defaults to <code>0.5</code>.
+   */
+  gapDetectionThreshold: number;
+  /**
+   * The polling time in seconds to check for gaps in the media. This value
+   * defaults to <code>0.25</code>.
+   */
+  gapJumpTimerTime: number;
+
+  /**
+   * By default, we will not allow seeking to exactly the duration of a
+   * presentation.  This field is the number of seconds before duration we will
+   * seek to when the user tries to seek to or start playback at the duration.
+   * To disable this behavior, the config can be set to 0.  We recommend using
+   * the default value unless you have a good reason not to.
+   */
+  durationBackoff: number;
+  /**
+   * The amount of seconds that should be added when repositioning the playhead
+   * after falling out of the availability window or seek. This gives the player
+   * more time to buffer before falling outside again, but increases the forward
+   * jump in the stream skipping more content. This is helpful for lower
+   * bandwidth scenarios. Defaults to 5 if not provided.
+   */
+  safeSeekOffset: number;
+  /**
+   * When set to <code>true</code>, the stall detector logic will run.  If the
+   * playhead stops moving for <code>stallThreshold</code> seconds, the player
+   * will either seek or pause/play to resolve the stall, depending on the value
+   * of <code>stallSkip</code>.
+   */
+  stallEnabled: number;
+  /**
+   * The maximum number of seconds that may elapse without the playhead moving
+   * (when playback is expected) before it will be labeled as a stall.
+   */
+  stallThreshold: number;
+  /**
+   * The number of seconds that the player will skip forward when a stall has
+   * been detected.  If 0, the player will pause and immediately play instead of
+   * seeking.  A value of 0 is recommended and provided as default on TV
+   * platforms (WebOS, Tizen, Chromecast, etc).
+   */
+  stallSkip: number;
+  /**
+   * Desktop Safari has both MediaSource and their native HLS implementation.
+   * Depending on the application's needs, it may prefer one over the other.
+   * Only applies to clear streams
+   * Defaults to <code>true</code>.
+   */
+  useNativeHlsOnSafari: boolean;
+  /**
+   * The maximum difference, in seconds, between the times in the manifest and
+   * the times in the segments.  Larger values allow us to compensate for more
+   * drift (up to one segment duration).  Smaller values reduce the incidence of
+   * extra segment requests necessary to compensate for drift.
+   */
+  inaccurateManifestTolerance: boolean;
+
+  /**
+   * If <code>true</code>, low latency streaming mode is enabled. If
+   * lowLatencyMode is set to true, it changes the default config values for
+   * other things, see: docs/tutorials/config.md
+   */
+  lowLatencyMode: boolean;
+  /**
+   * If the stream is low latency and the user has not configured the
+   * lowLatencyMode, but if it has been configured to activate the
+   * lowLatencyMode if a stream of this type is detected, we automatically
+   * activate the lowLatencyMode. Defaults to false.
+   */
+  autoLowLatencyMode: boolean;
+
+  forceHTTP: boolean;
+  forceHTTPS: boolean;
+  /**
+   * If true, prefer native HLS playback when possible, regardless of platform.
+   */
+  preferNativeHls: boolean;
+  /**
+   * The minimum number of seconds to see if the manifest has changes.
+   */
+  updateIntervalSeconds: number;
+  /**
+   *  If true, all emsg boxes are parsed and dispatched.
+   */
+  dispatchAllEmsgBoxes: boolean;
+  /**
+   * If true, monitor media quality changes and emit
+   *  <code>shaka.Player.MediaQualityChangedEvent</code>.
+   */
+  observeQualityChanges: boolean;
+  /**
+   * The maximum time a variant can be disabled when NETWORK HTTP_ERROR
+   *  is reached, in seconds.
+   *  If all variants are disabled this way, NETWORK HTTP_ERROR will be thrown.
+   */
+  maxDisabledTime: number;
+  /**
+   * If <code>true</code>, will raise a shaka.extern.ProducerReferenceTime
+   * player event (event name 'prft').
+   * The event will be raised only once per playback session as program
+   * start date will not change, and would save parsing the segment multiple
+   * times needlessly.
+   * Defaults to <code>false</code>.
+   */
+  parsePrftBox: boolean;
+  /**
+   * The maximum number of segments for each active stream to be prefetched
+   * ahead of playhead in parallel.
+   * If <code>0</code>, the segments will be fetched sequentially.
+   * Defaults to <code>0</code>.
+   */
+  segmentPrefetchLimit: number;
+  /**
+   *  The audio languages to prefetch.
+   *  Defaults to an empty array.
+   */
+  prefetchAudioLanguages: string[];
+  /**
+   * If set and prefetch limit is defined, it will prevent from prefetching data
+   *  for audio.
+   *  Defaults to <code>false</code>.
+   */
+  disableAudioPrefetch: boolean;
+  /**
+   * If set and prefetch limit is defined, it will prevent from prefetching data
+   * for text.
+   * Defaults to <code>false</code>.
+   */
+  disableTextPrefetch: boolean;
+  /**
+   * If set and prefetch limit is defined, it will prevent from prefetching data
+   * for video.
+   * Defaults to <code>false</code>.
+   */
+  disableVideoPrefetch: boolean;
+  /**
+   * Enable the live stream sync against the live edge by changing the playback
+   * rate. Defaults to <code>false</code>.
+   * Note: on some SmartTVs, if this is activated, it may not work or the sound
+   * may be lost when activated.
+   */
+  liveSync: boolean;
+  /**
+   * Latency tolerance for target latency, in seconds. Effective only if
+   * liveSync is true. Defaults to <code>0.5</code>.
+   */
+  liveSyncTargetLatencyTolerance: number;
+  /**
+   * Maximum acceptable latency, in seconds. Effective only if liveSync is
+   * true. Defaults to <code>1</code>.
+   */
+  liveSyncMaxLatency: number;
+
+  /**
+   * Playback rate used for latency chasing. It is recommended to use a value
+   * between 1 and 2. Effective only if liveSync is true. Defaults to
+   * <code>1.1</code>.
+   */
+  liveSyncPlaybackRate: number;
+  /**
+   * Minimum acceptable latency, in seconds. Effective only if liveSync is
+   * true. Defaults to <code>0</code>.
+   */
+  liveSyncMinLatency: number;
+  /**
+   * Minimum playback rate used for latency chasing. It is recommended to use a
+   * value between 0 and 1. Effective only if liveSync is true. Defaults to
+   * <code>0.95</code>.
+   */
+  liveSyncMinPlaybackRate: number;
+  /**
+   * Number of seconds that playback stays in panic mode after a rebuffering.
+   * Defaults to <code>60</code>
+   */
+  liveSyncPanicThreshold: number;
+  /**
+   * Indicate if we should recover from VIDEO_ERROR resetting Media Source.
+   * Defaults to <code>true</code>.
+   */
+  allowMediaSourceRecoveries: boolean;
+  /**
+   * The minimum time between recoveries when VIDEO_ERROR is reached, in
+   * seconds.
+   * Defaults to <code>5</code>.
+   */
+  minTimeBetweenRecoveries: number;
+  /**
+   * Playback rate to use if the buffer is too small. Defaults to
+   * <code>0.95</code>.
+   */
+  vodDynamicPlaybackRate: number;
+  /**
+   * Ratio of the <code>bufferingGoal</code> as the low threshold for
+   * setting the playback rate to
+   * <code>vodDynamicPlaybackRateLowBufferRate</code>.
+   * Defaults to <code>0.5</code>.
+   */
+  vodDynamicPlaybackRateBufferRatio: number;
+  /**
+   * If <code>true</code>, the media source live duration
+   * set as a<code>Infinity</code>
+   * Defaults to <code> false </code>.
+   */
+  infiniteLiveStreamDuration: boolean;
+  /**
+   * The window of time at the end of the presentation to begin preloading the
+   * next URL, such as one specified by a urn:mpeg:dash:chaining:2016 element
+   * in DASH. Measured in seconds. If the value is 0, the next URL will not
+   * be preloaded at all.
+   * Defaults to <code> 30 </code>.
+   */
+  preloadNextUrlWindow: number;
+
+  /**
+   * The maximum timeout to reject the load when using src= in case the content
+   * does not work correctly.  Measured in seconds.
+   * Defaults to <code> 30 </code>.
+   */
+  loadTimeout: number;
+  /**
+   * Clears decodingInfo and MediaKeySystemAccess cache during player unload
+   * as these objects may become corrupt and cause issues during subsequent
+   * playbacks on some platforms.
+   * Defaults to <code>true</code> on PlayStation devices and to
+   * <code>false</code> on other devices.
+   */
+  clearDecodingCache: boolean;
+  /**
+   * If true, we don't choose codecs in the player, and keep all the variants.
+   * Defaults to <code>false</code>.
+   */
+  dontChooseCodecs: boolean;
+}
+
+/**
+ * Media source configuration.
+ */
+export interface MediaSourceConfiguration {
+  /**
+   * Allow codec switching strategy. SMOOTH loading uses
+   * SourceBuffer.changeType. RELOAD uses cycling of MediaSource.
+   * Defaults to SMOOTH if SMOOTH codec switching is supported, RELOAD
+   * overwise.
+   */
+  codecSwitchingStrategy: CodecSwitchingStrategy;
+  /**
+   *
+   * Callback to generate extra features string based on used MIME type.
+   * Some platforms may need to pass features when initializing the
+   * sourceBuffer.
+   * This string is ultimately appended to a MIME type in addSourceBuffer() &
+   * changeType().
+   */
+  addExtraFeaturesToSourceBuffer: (feature: string) => string;
+  /**
+   * If this is <code>true</code>, we will transmux AAC and TS content even if
+   * not strictly necessary for the assets to be played.
+   * This value defaults to <code>false</code>.
+   */
+  forceTransmux: boolean;
+  /**
+   * If true, will apply a work-around for non-encrypted init segments on
+   * encrypted content for some platforms.
+   * <br><br>
+   * See https://github.com/shaka-project/shaka-player/issues/2759.
+   * <br><br>
+   * If you know you don't need this, you canset this value to
+   * <code>false</code> to gain a few milliseconds on loading time and seek
+   * time.
+   * <br><br>
+   * This value defaults to <code>true</code>.
+   */
+  insertFakeEncryptionInInit: boolean;
+  /**
+   * A callback called for each cue after it is parsed, but right before it
+   * is appended to the presentation.
+   * Gives a chance for client-side editing of cue text, cue timing, etc.
+   */
+  modifyCueCallback: ModifyCueCallback;
+}
+
+/**
+ * Common Media Client Data (CMCD) configuration.
+ */
+export interface CmcdConfiguration {
+  /**
+   * If <code>true</code>, enable CMCD data to be sent with media requests.
+   * Defaults to <code>false</code>.
+   */
+  enable: boolean;
+  /**
+   * If <code>true</code>, send CMCD data using the header transmission mode
+   * instead of query args.  Defaults to <code>false</code>.
+   */
+  useHeaders: boolean;
+  /**
+   * A GUID identifying the current playback session. A playback session
+   * typically ties together segments belonging to a single media asset.
+   * Maximum length is 64 characters. It is RECOMMENDED to conform to the UUID
+   * specification. By default the sessionId is automatically generated on each
+   * <code>load()</code> call.
+   */
+  sessionId: string;
+  /**
+   * A unique string identifying the current content. Maximum length is 64
+   * characters. This value is consistent across multiple different sessions and
+   * devices and is defined and updated at the discretion of the service
+   * provider.
+   */
+  contentId: string;
+  /**
+   * RTP safety factor.
+   * Defaults to <code>5</code>.
+   */
+  rtpSafetyFactor: number;
+  /**
+   * An array of keys to include in the CMCD data. If not provided, all keys
+   * will be included.
+   */
+  includeKeys: string[];
+}
+
+/**
+ * Common Media Server Data (CMSD) configuration.
+ */
+export interface CmsdConfiguration {
+  /**
+   *  If <code>true</code>, enables reading CMSD data in media requests.
+   *  Defaults to <code>true</code>.
+   */
+  enabled: boolean;
+  /**
+   * If true, we must apply the maximum suggested bitrate. If false, we ignore
+   * this.
+   * Defaults to <code>true</code>.
+   */
+  applyMaximumSuggestedBitrate: boolean;
+
+  /**
+   * How much the estimatedThroughput of the CMSD data should be weighted
+   * against the default estimate, between 0 and 1.
+   * Defaults to <code>0.5</code>.
+   */
+  estimatedThroughputWeightRatio: number;
+}
+
+/**
+ *  Decoding for MPEG-5 Part2 LCEVC.
+ */
+export interface LcevcConfiguration {
+  /**
+   * If <code>true</code>, enable LCEVC.
+   * Defaults to <code>false</code>.
+   */
+  enabled: boolean;
+  /**
+   * If <code>true</code>, LCEVC Dynamic Performance Scaling or dps is enabled
+   * to be triggered, when the system is not able to decode frames within a
+   * specific tolerance of the fps of the video and disables LCEVC decoding
+   * for some time. The base video will be shown upscaled to target resolution.
+   * If it is triggered again within a short period of time, the disabled
+   * time will be higher and if it is triggered three times in a row the LCEVC
+   * decoding will be disabled for that playback session.
+   * If dynamicPerformanceScaling is false, LCEVC decode will be forced
+   * and will drop frames appropriately if performance is sub optimal.
+   * Defaults to <code>true</code>.
+   */
+  dynamicPerformanceScaling: boolean;
+  /**
+   * Loglevel 0-5 for logging.
+   * NONE = 0
+   * ERROR = 1
+   * WARNING = 2
+   * INFO = 3
+   * DEBUG = 4
+   * VERBOSE = 5
+   * Defaults to <code>0</code>.
+   */
+  logLevel: number;
+  /**
+   * If <code>true</code>, LCEVC Logo is placed on the top left hand corner
+   * which only appears when the LCEVC enhanced frames are being rendered.
+   * Defaults to true for the lib but is forced to false in this integration
+   * unless explicitly set to true through config.
+   * Defaults to <code>false</code>.
+   */
+  drawLogo: boolean;
+}
+
+// TODO: 离线播放
+export interface OfflineConfiguration {}
+
 export interface PlayerConfiguration {
   /**
    * Ads configuration and settings.
@@ -368,6 +754,110 @@ export interface PlayerConfiguration {
    * Controls behavior of auto-showing text tracks on load().
    */
   autoShowText: AutoShowText;
+
+  //  DRM configuration and settings.
+  drm: DrmConfiguration;
+
+  // Manifest configuration and settings.
+  manifest: ManifestConfiguration;
+
+  // Streaming configuration and settings.
+  streaming: StreamingConfiguration;
+  // Media source configuration and settings.
+  mediaSource: MediaSourceConfiguration;
+  // A factory to construct an abr manager.
+  abrFactory: AbrManagerFactory;
+  // ABR configuration and settings.
+  abr: AbrConfiguration;
+  cmcd: CmcdConfiguration;
+  cmsd: CmsdConfiguration;
+  offline: OfflineConfiguration;
+  /**
+   * The preferred language to use for audio tracks.  If not given it will use
+   * the <code>'main'</code> track.
+   * Changing this during playback will not affect the current playback.
+   */
+  preferredAudioLanguage: string;
+  /**
+   * The preferred label to use for audio tracks
+   */
+  preferredAudioLabel: string;
+  // The preferred label to use for video tracks
+  preferredVideoLabel: string;
+  /**
+   * The preferred language to use for text tracks.  If a matching text track
+   * is found, and the selected audio and text tracks have different languages,
+   * the text track will be shown.
+   * Changing this during playback will not affect the current playback.
+   */
+  preferredTextLanguage: string;
+  // The preferred role to use for variants.
+  preferredVariantRole: string;
+  // The preferred role to use for text tracks.
+  preferredTextRole: string;
+  // The list of preferred video codecs, in order of highest to lowest priority.
+  preferredVideoCodecs: string[];
+  // The list of preferred audio codecs, in order of highest to lowest priority.
+  preferredAudioCodecs: string[];
+
+  // The preferred number of audio channels.
+  preferredAudioChannelCount: number;
+  /**
+   * The preferred HDR level of the video. If possible, this will cause the
+   * player to filter to assets that either have that HDR level, or no HDR level
+   * at all.
+   * Can be 'SDR', 'PQ', 'HLG', 'AUTO' for auto-detect, or '' for no preference.
+   * Defaults to 'AUTO'.
+   * Note that one some platforms, such as Chrome, attempting to play PQ content
+   * may cause problems.
+   */
+  preferredVideoHdrLevel: string;
+  /**
+   * The preferred video layout of the video.
+   * Can be 'CH-STEREO', 'CH-MONO', or '' for no preference.
+   * If the content is predominantly stereoscopic you should use 'CH-STEREO'.
+   * If the content is predominantly monoscopic you should use 'CH-MONO'.
+   * Defaults to ''.
+   */
+  preferredVideoLayout: string;
+  /**
+   * The list of preferred attributes of decodingInfo, in the order of their
+   * priorities.
+   */
+  preferredDecodingAttributes: string[];
+  /**
+   * If true, a forced text track is preferred.  Defaults to false.
+   * If the content has no forced captions and the value is true,
+   * no text track is chosen.
+   * Changing this during playback will not affect the current playback.
+   */
+  preferForcedSubs: boolean;
+  /**
+   * The application restrictions to apply to the tracks.  These are "hard"
+   * restrictions.  Any track that fails to meet these restrictions will not
+   * appear in the track list.  If no tracks meet these restrictions, playback
+   * will fail.
+   */
+  restrictions: Restrictions;
+
+  /**
+   * Optional playback and seek start time in seconds. Defaults to 0 if
+   * not provided.
+   */
+  playRangeStart: number;
+
+  /**
+   * Optional playback and seek end time in seconds. Defaults to the end of
+   * the presentation if not provided.
+   */
+  playRangeEnd: number;
+  // Text displayer configuration and settings.
+  textDisplayer: TextDisplayerConfiguration;
+  /**
+   * A factory to construct a text displayer. Note that, if this is changed
+   * during playback, it will cause the text tracks to be reloaded.
+   */
+  textDisplayFactory: TextDisplayerFactory;
 }
 
 /**

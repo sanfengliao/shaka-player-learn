@@ -2803,3 +2803,6 @@ export interface DashParserStreamInfo {
 }
 
 export type GetFrameNode = (frame?: DashParserInheritanceFrame) => XmlNode | undefined;
+
+ManifestParser.registerParserByMime('application/dash+xml', () => new DashParser());
+ManifestParser.registerParserByMime('video/vnd.mpeg.dash.mpd', () => new DashParser());
