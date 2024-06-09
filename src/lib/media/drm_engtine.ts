@@ -1,6 +1,9 @@
 import { DrmInfo } from '../../externs/shaka/manifest';
 import { IDestroyable } from '../util/i_destroyable';
 
+/**
+ * TODO(sanfeng): 实现DRM
+ */
 export class DrmEngine implements IDestroyable {
   static areDrmCompatible(drms1: DrmInfo[], drms2: DrmInfo[]) {
     if (!drms1.length || !drms2.length) {

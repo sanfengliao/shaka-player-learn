@@ -1,5 +1,6 @@
 import { AutoShowText } from '../../lib/config/auto_show_text';
 import { CodecSwitchingStrategy } from '../../lib/config/codec_switching_strategy';
+import { AccessibilityPurpose } from '../../lib/media/manifest_parser';
 import { ShakaError } from '../../lib/util/error';
 import { AbrManagerFactory } from './abr_manager';
 import { RetryParameters } from './net';
@@ -294,7 +295,7 @@ export interface MediaQualityInfo {
   pixelAspectRatio?: string | null;
 }
 
-// TODO: 实现DRM功能
+// TODO(sanfeng): DRM功能
 export interface DrmConfiguration {}
 
 /**
@@ -741,7 +742,7 @@ export interface LcevcConfiguration {
   drawLogo: boolean;
 }
 
-// TODO: 离线播放
+// TODO(sanfeng): 离线播放
 export interface OfflineConfiguration {}
 
 export interface PlayerConfiguration {
@@ -1243,3 +1244,154 @@ export interface MetadataFrame {
   mimeType?: string;
   pictureType?: number;
 }
+
+export interface Resolution {
+  //  Width in pixels.
+  width: number;
+  //  Height in pixels.
+  height: number;
+}
+
+/**
+ * An object describing a media track.  This object should be treated as
+ * read-only as changing any values does not have any effect.  This is the
+ * public view of an audio/video paring (variant type) or text track (text
+ * type) or image track (image type).
+ */
+export interface Track {
+  // The unique ID of the track.
+  id: number;
+  /**
+   * If true, this is the track being streamed (another track may be
+   * visible/audible in the buffer).
+   */
+  active: boolean;
+  /**
+   * The type of track, either <code>'variant'</code> or <code>'text'</code>
+   * or <code>'image'</code>.
+   */
+  type: string;
+
+  // The bandwidth required to play the track, in bits/sec.
+  bandwidth: number;
+  /**
+   * The language of the track, or <code>'und'</code> if not given.  This value
+   *   is normalized as follows - language part is always lowercase and translated
+   *   to ISO-639-1 when possible, locale part is always uppercase,
+   *   i.e. <code>'en-US'</code>.
+   */
+  language: string;
+  // The track label, which is unique text that should describe the track.
+  label: string | null;
+  /**
+   * (only for text tracks) The kind of text track, either
+   *   <code>'caption'</code> or <code>'subtitle'</code>.
+   */
+  kind: string | null;
+  // The video width provided in the manifest, if present.
+  width: number | null;
+  // The video height provided in the manifest, if present.
+  height: number | null;
+  // The video framerate provided in the manifest, if present.
+  frameRate: number | null;
+  // The video pixel aspect ratio provided in the manifest, if present.
+  pixelAspectRatio: string | null;
+  // The video HDR provided in the manifest, if present.
+  hdr: string | null;
+  // The video color gamut provided in the manifest, if present.
+  colorGamut: string | null;
+  // The video layout provided in the manifest, if present.
+  videoLayout: string | null;
+  // The MIME type of the content provided in the manifest.
+  mimeType: string | null;
+  // The audio MIME type of the content provided in the manifest.
+  audioMimeType: string | null;
+  // The video MIME type of the content provided in the manifest.
+  videoMimeType: string | null;
+  // The audio/video codecs string provided in the manifest, if present.
+  codecs: string | null;
+  // The audio codecs string provided in the manifest, if present.
+  audioCodec: string | null;
+  // The video codecs string provided in the manifest, if present.
+  videoCodec: string | null;
+  /**
+   * True indicates that this in the primary language for the content.
+   *   This flag is based on signals from the manifest.
+   *   This can be a useful hint about which language should be the default, and
+   *   indicates which track Shaka will use when the user's language preference
+   *   cannot be satisfied.
+   */
+  primary: boolean;
+  /**
+   * The roles of the track, e.g. <code>'main'</code>, <code>'caption'</code>,
+   *   or <code>'commentary'</code>.
+   */
+  roles: string[] | null;
+  /**
+   * The roles of the audio in the track, e.g. <code>'main'</code> or
+   *   <code>'commentary'</code>. Will be null for text tracks or variant tracks
+   *   without audio.
+   */
+  audioRoles: string[] | null;
+  /**
+   *   The DASH accessibility descriptor, if one was provided for this track.
+   *   For text tracks, this describes the text; otherwise, this is for the audio.
+   */
+  accessibilityPurpose: AccessibilityPurpose | null;
+  /**
+   * True indicates that this in the forced text language for the content.
+   *   This flag is based on signals from the manifest.
+   */
+  forced: boolean;
+  // (only for variant tracks) The video stream id.
+  videoId: number | null;
+  // (only for variant tracks) The audio stream id.
+  audioId: number | null;
+  // The count of the audio track channels.
+  channelsCount: number | null;
+  // Specifies the maximum sampling rate of the content.
+  audioSamplingRate: number | null;
+  /**
+   * The value is a grid-item-dimension consisting of two positive decimal
+   *   integers in the format: column-x-row ('4x3'). It describes the arrangement
+   *   of Images in a Grid. The minimum valid LAYOUT is '1x1'.
+   */
+  tilesLayout: string | null;
+  /**
+   * True indicates that the content has spatial audio.
+   *   This flag is based on signals from the manifest.
+   */
+  spatialAudio: boolean;
+  //  (only for variant tracks) The audio stream's bandwidth if known.
+  audioBandwidth: number | null;
+  // (only for variant tracks) The video stream's bandwidth if known.
+  videoBandwidth: number | null;
+  /**
+   * (variant tracks only) The original ID of the video part of the track, if
+   *   any, as it appeared in the original manifest.
+   */
+  originalVideoId: string | null;
+  /**
+   * (variant tracks only) The original ID of the audio part of the track, if
+   *   any, as it appeared in the original manifest.
+   */
+  originalAudioId: string | null;
+  /**
+   * (text tracks only) The original ID of the text track, if any, as it
+   *   appeared in the original manifest.
+   */
+  originalTextId: string | null;
+  /**
+   * (image tracks only) The original ID of the image track, if any, as it
+   *   appeared in the original manifest.
+   */
+  originalImageId: string | null;
+  /**
+   * The original language of the track, if any, as it appeared in the original
+   *   manifest.  This is the exact value provided in the manifest; for normalized
+   *   value use <code>language</code> property.
+   */
+  originalLanguage: string | null;
+}
+
+export type TrackList = Track[];

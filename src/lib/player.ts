@@ -58,11 +58,7 @@ export class Player extends FakeEventTarget {
         const onError = (event: Event) => this.onVideoError(event);
         this.attachEventManager_.listen(mediaElement, 'error', onError);
         this.video_ = mediaElement;
-        if (
-          initializeMediaSource &&
-          Platform.supportsMediaSource() &&
-          !this.mediaSourceEngine_
-        ) {
+        if (initializeMediaSource && Platform.supportsMediaSource() && !this.mediaSourceEngine_) {
           await this.initializeMediaSourceEngineInner_();
         }
       }
@@ -134,11 +130,7 @@ export class Player extends FakeEventTarget {
    * @return {!Promise}
    * @export
    */
-  async load(
-    assetUriOrPreloader: string | PreloadManager,
-    startTime?: number,
-    mimeType?: string
-  ) {
+  async load(assetUriOrPreloader: string | PreloadManager, startTime?: number, mimeType?: string) {
     // Do not allow the player to be used after |destroy| is called.
     if (this.loadMode_ === Player.LoadMode.DESTROYED) {
       throw this.createAbortLoadError_();
@@ -159,11 +151,7 @@ export class Player extends FakeEventTarget {
     this.mutex_.release();
 
     if (!this.video_) {
-      throw new ShakaError(
-        ShakaError.Severity.CRITICAL,
-        ShakaError.Category.PLAYER,
-        ShakaError.Code.NO_VIDEO_ELEMENT
-      );
+      throw new ShakaError(ShakaError.Severity.CRITICAL, ShakaError.Category.PLAYER, ShakaError.Code.NO_VIDEO_ELEMENT);
     }
 
     if (this.assetUri_) {
@@ -186,10 +174,7 @@ export class Player extends FakeEventTarget {
       }
     };
 
-    const mutexWrapOperation = async (
-      operation: () => Promise<any>,
-      mutexIdentifier: string
-    ) => {
+    const mutexWrapOperation = async (operation: () => Promise<any>, mutexIdentifier: string) => {
       try {
         await this.mutex_.acquire(mutexIdentifier);
         await detectInterruption();
@@ -234,9 +219,7 @@ export class Player extends FakeEventTarget {
       this.preloadNextUrl_ = null;
     }
   }
-  private guessMimeType_(
-    assetUri: string
-  ): string | PromiseLike<string | undefined> | undefined {
+  private guessMimeType_(assetUri: string): string | PromiseLike<string | undefined> | undefined {
     asserts.assert(this.networkingEngine_, 'Should have a net engine!');
     let mimeType = '';
     if (mimeType == 'application/x-mpegurl' && Platform.isApple()) {
@@ -252,12 +235,7 @@ export class Player extends FakeEventTarget {
    * @private
    */
   makeStateChangeEvent_(nodeName: string) {
-    this.dispatchEvent(
-      Player.makeEvent_(
-        FakeEvent.EventName.OnStateChange,
-        new Map([['state', nodeName]])
-      )
-    );
+    this.dispatchEvent(Player.makeEvent_(FakeEvent.EventName.OnStateChange, new Map([['state', nodeName]])));
   }
 
   private onVideoError(event: Event) {
@@ -312,7 +290,7 @@ export class Player extends FakeEventTarget {
       return;
     }
     let fireError = true;
-    // TODO: 完善一些逻辑
+    // TODO(sanfeng): 完善一些逻辑
     // if (this.fullyLoaded_ && this.manifest_ && this.streamingEngine_ &&
     //   (error.code == shaka.util.Error.Code.VIDEO_ERROR ||
     //   error.code == shaka.util.Error.Code.MEDIA_SOURCE_OPERATION_FAILED ||
@@ -352,11 +330,7 @@ export class Player extends FakeEventTarget {
    * @private
    */
   private createAbortLoadError_() {
-    return new ShakaError(
-      ShakaError.Severity.CRITICAL,
-      ShakaError.Category.PLAYER,
-      ShakaError.Code.LOAD_INTERRUPTED
-    );
+    return new ShakaError(ShakaError.Severity.CRITICAL, ShakaError.Category.PLAYER, ShakaError.Code.LOAD_INTERRUPTED);
   }
 
   /**
