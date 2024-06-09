@@ -13,12 +13,21 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
   private startTime_: number;
   private startTimeOfLoad_: number;
 
-  constructor(assetUri: string, mimeType: string, startTimeOfLoad: number, startTime: number) {
+  private networkingEngine_: NetworkingEngine;
+
+  constructor(
+    assetUri: string,
+    mimeType: string,
+    startTimeOfLoad: number,
+    startTime: number,
+    playerInterface: PreloadManagerPlayerInterface
+  ) {
     super();
     this.assetUri_ = assetUri;
     this.startTime_ = startTime;
     this.startTimeOfLoad_ = startTimeOfLoad;
     this.mimeType_ = mimeType;
+    this.networkingEngine_ = playerInterface.networkingEngine;
   }
   /**
    * TODO(sanfeng) implement destroy
