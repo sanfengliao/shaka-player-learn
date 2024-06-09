@@ -41,11 +41,10 @@ export class TXml {
    * Parse some data
    * @param data
    * @param expectedRootElemName
-
    */
   static parseXml(data: BufferSource, expectedRootElemName: string) {
     const xmlString = StringUtils.fromBytesAutoDetect(data);
-    return TXml.parseXmlString(xmlString, expectedRootElemName);
+    return TXml.parseXmlString(xmlString, expectedRootElemName) as XmlNode;
   }
 
   /**
@@ -503,15 +502,15 @@ export class TXml {
     elem: XmlNode,
     name: string,
     parseFunction: (value: string) => T | null,
-    defaultValue?: T
-  ): T | undefined {
-    let parsedValue = null;
+    defaultValue: T | null = null
+  ): T | null {
+    let parsedValue: T | null = null;
 
     const value = elem.attributes[name];
     if (value != null) {
       parsedValue = parseFunction(value);
     }
-    return parsedValue ?? defaultValue;
+    return parsedValue ?? (defaultValue as T);
   }
 
   /**
@@ -856,7 +855,7 @@ export class TXml {
   static knownNameSpaces_ = new Map([]);
 }
 
-interface TXmlPathNode {
+export interface TXmlPathNode {
   name: string;
   id?: string;
   position?: number | null;

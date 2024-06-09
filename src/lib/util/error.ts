@@ -735,6 +735,10 @@ export class ShakaError implements IError {
     // RETIRED: 'INVALID_STREAMS_CHOSEN': 5005,
 
     /**
+     * Patch requested during an update did not match original manifest.
+     */
+    DASH_INVALID_PATCH: 4052,
+    /**
      * This would only happen if StreamingEngine were not started correctly, and
      * should not be seen in production.
      */

@@ -192,7 +192,7 @@ export interface RequestContext {
   // The duration of the segment in seconds
   stream?: Stream;
   // The request's segment reference
-  segment: SegmentReference;
+  segment?: SegmentReference;
 }
 
 /**

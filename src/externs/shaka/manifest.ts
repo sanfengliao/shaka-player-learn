@@ -80,7 +80,7 @@ export interface Manifest {
    * If true, we will append the media segments using sequence mode; that is to
    * say, ignoring any timestamps inside the media files.
    */
-  sequenceMode: number;
+  sequenceMode: boolean;
 
   /**
    * If true, don't adjust the timestamp offset to account for manifest
@@ -101,7 +101,7 @@ export interface Manifest {
    * The service description for the manifest. Used to adapt playbackRate to
    * decrease latency.
    */
-  serviceDescription: number;
+  serviceDescription: ServiceDescription | null;
   // The next url to play.
   nextUrl?: string;
 }
@@ -114,7 +114,7 @@ export interface Period {
   // The audio streams from one Period.
   audioStreams: Stream[];
   // The video streams from one Period.
-  videoStream: Stream[];
+  videoStreams: Stream[];
   // The text streams from one Period.
   textStreams: Stream[];
   // The image streams from one Period.
@@ -181,7 +181,7 @@ export interface DrmInfo {
    * <i>Required.</i> <br>
    * The encryption scheme, e.g., "cenc", "cbcs", "cbcs-1-9".
    */
-  encryptionScheme: string;
+  encryptionScheme?: string;
   /**
    * <i>Filled in by DRM config if missing.</i> <br>
    * The license server URI.
@@ -203,7 +203,7 @@ export interface DrmInfo {
    * <i>Defaults to 'temporary' if Shaka wasn't initiated for storage.
    * Can be filled in by advanced DRM config sessionType parameter.</i> <br>
    */
-  sessionType: string;
+  sessionType?: string;
   /**
    * <i>Defaults to '', e.g., no specific robustness required.  Can be filled in
    * by advanced DRM config.</i> <br>
@@ -267,13 +267,13 @@ export interface Stream {
    * DASH, this is the "id" attribute of the Representation element.  In HLS,
    * this is the "NAME" attribute.
    */
-  originalId?: string;
+  originalId: string | null;
   /**
    * <i>Optional.</i> <br>
    * The ID of the stream's parent element. In DASH, this will be a unique
    * ID that represents the representation's parent adaptation element
    */
-  groupId?: string;
+  groupId: string | null;
   /**
    * <i>Required.</i> <br>
    * Creates the Stream's segmentIndex (asynchronously).
@@ -283,12 +283,12 @@ export interface Stream {
    * <i>Optional.</i> <br>
    * Closes the Stream's segmentIndex.
    */
-  closeSegmentIndex: () => void;
+  closeSegmentIndex?: () => void;
   /**
    * <i>Required.</i> <br>
    * May be null until createSegmentIndex() is complete.
    */
-  segmentIndex: SegmentIndex;
+  segmentIndex: SegmentIndex | null;
   /**
    * The Stream's MIME type, e.g., 'audio/mp4', 'video/webm', or 'text/vtt'.
    * In the case of a stream that adapts between different periods with
@@ -328,7 +328,7 @@ export interface Stream {
    * <i>Video streams only.</i> <br>
    * The Stream's video layout info.
    */
-  videoLayout: string | undefined;
+  videoLayout?: string;
   /**
    * <i>Audio and video streams only.</i> <br>
    * The stream's required bandwidth in bits per second.
@@ -378,11 +378,11 @@ export interface Stream {
    * <i>Optional.</i> <br>
    * The original language, if any, that appeared in the manifest.
    */
-  originalLanguage?: string;
+  originalLanguage: string | null;
   /**
    * The Stream's label, unique text that should describe the audio/text track.
    */
-  label?: string;
+  label: string | null;
   /**
    * <i>Required.</i> <br>
    * Content type (e.g. 'video', 'audio' or 'text', 'image')
@@ -399,13 +399,13 @@ export interface Stream {
    * <i>Video streams only.</i> <br>
    * An alternate video stream to use for trick mode playback.
    */
-  trickModeVideo?: Stream;
+  trickModeVideo: Stream | null;
   /**
    * <i>Defaults to empty.</i><br>
    * Array of registered emsg box scheme_id_uri that should result in
    * Player events.
    */
-  emsgSchemeIdUris?: string[];
+  emsgSchemeIdUris: string[] | null;
   /**
    * The roles of the stream as they appear on the manifest,
    * e.g. 'main', 'caption', or 'commentary'.
@@ -415,7 +415,7 @@ export interface Stream {
    * accessibilityPurpose
    * The DASH accessibility descriptor, if one was provided for this stream.
    */
-  accessibilityPurpose?: AccessibilityPurpose;
+  accessibilityPurpose: AccessibilityPurpose | null;
   /**
    * <i>Defaults to false.</i> <br>
    * Whether the stream set was forced
@@ -424,11 +424,11 @@ export interface Stream {
   /**
    * The channel count information for the audio stream.
    */
-  channelsCount?: number;
+  channelsCount: number | null;
   /**
    * Specifies the maximum sampling rate of the content.
    */
-  audioSamplingRate?: number;
+  audioSamplingRate: number | null;
   /**
    * <i>Defaults to false.</i> <br>
    * Whether the stream set has spatial audio
@@ -442,7 +442,7 @@ export interface Stream {
    * provided by the description we'll set the same value as channel number.
    * Example: {'CC1': 'eng'; 'CC3': 'swe'}, or {'1', 'eng'; '2': 'swe'}, etc.
    */
-  closedCaptions: Map<string, string>;
+  closedCaptions: Map<string, string> | null;
   /**
    * <i>Image streams only.</i> <br>
    * The value is a grid-item-dimension consisting of two positive decimal
@@ -453,7 +453,7 @@ export interface Stream {
   /**
    * The streams in all periods which match the stream. Used for Dash.
    */
-  matchedStreams?: Array<Stream> | Array<StreamDB>;
+  matchedStreams?: Array<Stream>;
   /**
    * <i>Microsoft Smooth Streaming only.</i> <br>
    * Private MSS data that is necessary to be able to do transmuxing.
@@ -512,15 +512,17 @@ export interface Variant {
   /**
    * The audio stream of the variant.
    */
-  audio: Stream;
+  audio: Stream | null;
   /**
    * The video stream of the variant.
    */
-  video: Stream;
+  video: Stream | null;
   /**
    * The variant's required bandwidth in bits per second.
    */
   bandwidth: number;
+
+  drmInfos: DrmInfo[];
   /**
    * <i>Defaults to true.</i><br>
    * Set by the Player to indicate whether the variant is allowed to be played
@@ -575,7 +577,7 @@ export interface AesKey {
    * Web crypto key object of the AES key. If unset, the "fetchKey"
    * property should be provided.
    */
-  cryptoKey: CryptoKey | undefined;
+  cryptoKey: CryptoKey;
   /**
    * A function that fetches the key.
    * Should be provided if the "cryptoKey" property is unset.

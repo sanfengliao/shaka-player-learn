@@ -40,8 +40,8 @@ export class SegmentTemplate {
     isUpdate: boolean,
     segmentLimit: number,
     periodDurationMap: Record<string, number>,
-    aesKey: AesKey,
-    lastSegmentNumber: number,
+    aesKey: AesKey | null,
+    lastSegmentNumber: number | null,
     isPatchUpdate: boolean
   ): DashParserStreamInfo {
     asserts.assert(
@@ -222,8 +222,8 @@ export class SegmentTemplate {
     segmentLimit: number,
     initSegmentReference: InitSegmentReference | null,
     periodDurationMap: Record<string, number>,
-    aesKey?: AesKey,
-    lastSegmentNumber?: number
+    aesKey: AesKey | null,
+    lastSegmentNumber: number | null
   ) {
     asserts.assert(info.mediaTemplate, 'There should be a media template with duration');
     const presentationTimeline = context.presentationTimeline;
@@ -534,7 +534,7 @@ export class SegmentTemplate {
    * @param context
    * @param aesKey
    */
-  private static createInitSegment_(context: DashParserContext, aesKey: AesKey): InitSegmentReference | null {
+  private static createInitSegment_(context: DashParserContext, aesKey: AesKey | null): InitSegmentReference | null {
     let initialization = context.representation!.initialization;
     if (!initialization) {
       initialization = MpdUtils.inheritAttribute(context, SegmentTemplate.fromInheritance_, 'initialization');
@@ -588,7 +588,7 @@ export class TimelineSegmentIndex extends SegmentIndex {
   private periodStart_: number;
   private periodEnd_: number;
   private initSegmentReference_: InitSegmentReference | null;
-  private aesKey_: AesKey | undefined;
+  private aesKey_: AesKey | null;
   private segmentSequenceCadence_: number;
 
   constructor(
@@ -600,7 +600,7 @@ export class TimelineSegmentIndex extends SegmentIndex {
     periodEnd: number,
     initSegmentReference: InitSegmentReference | null,
     shouldFit: boolean,
-    aesKey: AesKey | undefined,
+    aesKey: AesKey | null,
     segmentSequenceCadence: number
   ) {
     super([]);
