@@ -1,5 +1,11 @@
+import { ManifestParserPlayerInterface } from '../../externs/shaka/manifest_parser';
+import { NetworkingEngine } from '../net/network_engine';
 import { FakeEventTarget } from '../util/fake_event_target';
 import { IDestroyable } from '../util/i_destroyable';
+import { PlayerConfiguration } from '../util/player_configuration';
+import { DrmEngine } from './drm_engtine';
+import { ManifestFilterer } from './manifest_filterer';
+import { RegionTimeline } from './region_timeline';
 
 export class PreloadManager extends FakeEventTarget implements IDestroyable {
   private assetUri_: string;
@@ -15,7 +21,7 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
     this.mimeType_ = mimeType;
   }
   /**
-   * TODO implement destroy
+   * TODO(sanfeng) implement destroy
    */
   async destroy(): Promise<void> {
     throw new Error('Method not implemented.');
@@ -33,4 +39,13 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
     return this.mimeType_;
   }
 }
-export interface PreloadManagerPlayerInterface {}
+export interface PreloadManagerPlayerInterface {
+  config: PlayerConfiguration;
+  manifestPlayerInterface: ManifestParserPlayerInterface;
+  regionTimeline: RegionTimeline;
+  createDrmEngine: () => DrmEngine;
+  networkingEngine: NetworkingEngine;
+  manifestFilterer: ManifestFilterer;
+  allowPrefetch: boolean;
+  allowMakeAbrManager: boolean;
+}

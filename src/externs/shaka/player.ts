@@ -1560,3 +1560,34 @@ export interface Track {
 }
 
 export type TrackList = Track[];
+
+/**
+ * Contains the times of a range of buffered content.
+ */
+export interface BufferedRange {
+  // The start time of the range, in seconds.
+  start: number;
+  // The end time of the range, in seconds.
+  end: number;
+}
+
+/**
+ * Contains information about the current buffered ranges.
+ */
+export interface BufferedInfo {
+  /**
+   * The combined audio/video buffered ranges, reported by
+   *   <code>video.buffered</code>.
+   */
+  total: BufferedRange[];
+  /**
+   *  The buffered ranges for audio content.
+   */
+  audio: BufferedRange[];
+  //  The buffered ranges for video content.
+  video: BufferedRange[];
+  /**
+   * The buffered ranges for text content.
+   */
+  text: BufferedRange[];
+}
