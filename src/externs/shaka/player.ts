@@ -1591,3 +1591,166 @@ export interface BufferedInfo {
    */
   text: BufferedRange[];
 }
+
+export interface StateChange {
+  /**
+   * The timestamp the state was entered, in seconds since 1970
+   *   (i.e. <code>Date.now() / 1000</code>).
+   */
+  timestamp: number;
+  /**
+   * The state the player entered.  This could be <code>'buffering'</code>,
+   *   <code>'playing'</code>, <code>'paused'</code>, or <code>'ended'</code>.
+   */
+  state: string;
+  /**
+   * The number of seconds the player was in this state.  If this is the last
+   *   entry in the list, the player is still in this state, so the duration will
+   *   continue to increase.
+   */
+  duration: number;
+}
+
+export interface TrackChoice {
+  /**
+   * The timestamp the choice was made, in seconds since 1970
+   *   (i.e. <code>Date.now() / 1000</code>).
+   */
+  timestamp: number;
+  /**
+   * The id of the track that was chosen.
+   */
+  id: number;
+  /**
+   * The type of track chosen (<code>'variant'</code> or <code>'text'</code>).
+   */
+  type: string;
+  /**
+   * <code>true</code> if the choice was made by AbrManager for adaptation;
+   *   <code>false</code> if it was made by the application through
+   *   <code>selectTrack</code>.
+   */
+  fromAdaptation: boolean;
+  /**
+   * The bandwidth of the chosen track (<code>null</code> for text).
+   */
+  bandwidth: number | null;
+}
+
+/**
+ * Contains statistics and information about the current state of the player.
+ * This is meant for applications that want to log quality-of-experience (QoE)
+ * or other stats.  These values will reset when <code>load()</code> is called
+ * again.
+ *
+ */
+export interface StatsInfo {
+  /**
+   *  The width of the current video track. If nothing is loaded or the content
+   *   is audio-only, NaN.
+   */
+  width: number;
+  /**
+   * The height of the current video track. If nothing is loaded or the content
+   *   is audio-only, NaN.
+   */
+  height: number;
+  /**
+   *  The bandwidth required for the current streams (total, in bit/sec).
+   *   It takes into account the playbackrate. If nothing is loaded, NaN.
+   *
+   */
+  streamBandwidth: number;
+  /**
+   * The total number of frames decoded by the Player. If not reported by the
+   *   browser, NaN.
+   */
+  decodedFrames: number;
+  /**
+   * The total number of frames dropped by the Player. If not reported by the
+   *   browser, NaN.
+   */
+  droppedFrames: number;
+  /**
+   *  The total number of corrupted frames dropped by the browser. If not
+   *   reported by the browser, NaN.
+   */
+  corruptedFrames: number;
+  /**
+   * The current estimated network bandwidth (in bit/sec). If no estimate
+   *   available, NaN.
+   */
+  estimatedBandwidth: number;
+  /**
+   * The total number of playback gaps jumped by the GapJumpingController.
+   *   If nothing is loaded, NaN.
+   */
+  gapsJumped: number;
+  /**
+   *  The total number of playback stalls detected by the StallDetector.
+   *   If nothing is loaded, NaN.
+   */
+  stallsDetected: number;
+  /**
+   *  This is the greatest completion percent that the user has experienced in
+   *   playback. Also known as the "high water mark". If nothing is loaded, or
+   *   the stream is live (and therefore indefinite), NaN.
+   */
+  completionPercent: number;
+  /**
+   *  This is the number of seconds it took for the video element to have enough
+   *   data to begin playback.  This is measured from the time load() is called to
+   *   the time the <code>'loadeddata'</code> event is fired by the media element.
+   *   If nothing is loaded, NaN.
+   */
+  loadLatency: number;
+  /**
+   * The amount of time it took to download and parse the manifest.
+   *   If nothing is loaded, NaN.
+   */
+  manifestTimeSeconds: number;
+  /**
+   * The amount of time it took to download the first drm key, and load that key
+   *   into the drm system. If nothing is loaded or DRM is not in use, NaN.
+   */
+  drmTimeSeconds: number;
+  /**
+   *  The total time spent in a playing state in seconds. If nothing is loaded,
+   *   NaN.
+   */
+  playTime: number;
+  /**
+   * The total time spent in a paused state in seconds. If nothing is loaded,
+   *   NaN.
+   */
+  pauseTime: number;
+  /**
+   *  The total time spent in a buffering state in seconds. If nothing is
+   *   loaded, NaN.
+   */
+  bufferingTime: number;
+  /**
+   *  The time spent on license requests during this session in seconds. If DRM
+   *   is not in use, NaN.
+   */
+  licenseTime: number;
+  /**
+   * The time between the capturing of a frame and the end user having it
+   *   displayed on their screen. If nothing is loaded or the content is VOD,
+   *   NaN.
+   */
+  liveLatency: number;
+  /**
+   * The presentation's max segment duration in seconds. If nothing is loaded,
+   *   NaN.
+   */
+  maxSegmentDuration: number;
+  /**
+   *  The bytes downloaded during the playback. If nothing is loaded, NaN.
+   */
+  bytesDownloaded: number;
+  //  A history of the stream changes.
+  switchHistory: TrackChoice[];
+  // A history of the state changes.
+  stateHistory: StateChange[];
+}
