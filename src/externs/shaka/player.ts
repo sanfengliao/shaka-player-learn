@@ -3,6 +3,7 @@ import { CodecSwitchingStrategy } from '../../lib/config/codec_switching_strateg
 import { AccessibilityPurpose } from '../../lib/media/manifest_parser';
 import { ShakaError } from '../../lib/util/error';
 import { AbrManagerFactory } from './abr_manager';
+import { DrmInfo } from './manifest';
 import { RetryParameters } from './net';
 import { ModifyCueCallback, TextDisplayerFactory } from './text';
 
@@ -295,8 +296,172 @@ export interface MediaQualityInfo {
   pixelAspectRatio?: string | null;
 }
 
+/**
+ * DRM Session Metadata for saved persistent session
+ */
+export interface PersistentSessionMetadata {
+  // Session id
+  sessionId: string;
+  // Initialization data in the format indicated by initDataType.
+  initData: Uint8Array | null;
+  // A string to indicate what format initData is in.
+  initDataType: string | null;
+}
+
+export interface AdvancedDrmConfiguration {
+  /**
+   * <i>Defaults to false.</i> <br>
+   *   True if the application requires the key system to support distinctive
+   *   identifiers.
+   */
+  distinctiveIdentifierRequired: boolean;
+  /**
+   *  <i>Defaults to false.</i> <br>
+   *   True if the application requires the key system to support persistent
+   *   state, e.g., for persistent license storage.
+   */
+  persistentStateRequired: boolean;
+  /**
+   *  A key-system-specific string that specifies a required security level for
+   *   video.
+   *   <i>Defaults to <code>''</code>, i.e., no specific robustness required.</i>
+   */
+  videoRobustness: string;
+  /**
+   * A key-system-specific string that specifies a required security level for
+   *   audio.
+   *   <i>Defaults to <code>''</code>, i.e., no specific robustness required.</i>
+   */
+  audioRobustness: string;
+  /**
+   * <i>Defaults to null.</i> <br>
+   *   <i>An empty certificate (<code>byteLength==0</code>) will be treated as
+   *   <code>null</code>.</i> <br>
+   *   <i>A certificate will be requested from the license server if
+   *   required.</i> <br>
+   *   A key-system-specific server certificate used to encrypt license requests.
+   *   Its use is optional and is meant as an optimization to avoid a round-trip
+   *   to request a certificate.
+   */
+  serverCertificate: Uint8Array;
+  /**
+   * <i>Defaults to <code>''</code>.</i><br>
+   *   If given, will make a request to the given URI to get the server
+   *   certificate. This is ignored if <code>serverCertificate</code> is set.
+   */
+  serverCertificateUri: string;
+  /**
+   *  The server that handles an <code>'individualiation-request'</code>.  If the
+   *   server isn't given, it will default to the license server.
+   */
+  individualizationServer: string;
+  /**
+   * <i>Defaults to <code>'temporary'</code> for streaming.</i> <br>
+   *   The MediaKey session type to create streaming licenses with.  This doesn't
+   *   affect offline storage.
+   */
+  sessionType: string;
+  /**
+   * The headers to use in the license request.
+   */
+  headers: Record<string, string>;
+}
+
+/**
+ *  A callback function to handle custom content ID signaling for FairPlay
+ * content.
+ */
+type InitDataTransform = (a: Uint8Array, b: string, c: DrmInfo) => Uint8Array;
+
 // TODO(sanfeng): DRM功能
-export interface DrmConfiguration {}
+export interface DrmConfiguration {
+  //  Retry parameters for license requests.
+  retryParameters: RetryParameters;
+  /**
+   * <i>Required for all but the clear key CDM.</i> <br>
+   *   A dictionary which maps key system IDs to their license servers.
+   *   For example,
+   *   <code>{'com.widevine.alpha': 'https://example.com/drm'}</code>.
+   */
+  servers: Record<string, string>;
+  /**
+   * <i>Forces the use of the Clear Key CDM.</i>
+   *   A map of key IDs (hex or base64) to keys (hex or base64).
+   */
+  clearKeys: Record<string, string>;
+  /**
+   * <i>Defaults to false.</i> <br>
+   *   True to configure drm to delay sending a license request until a user
+   *   actually starts playing content.
+   */
+  delayLicenseRequestUntilPlayed: boolean;
+  /**
+   *  <i>Defaults to false.</i> <br>
+   *   True to configure drm to try playback with given persistent session ids
+   *   before requesting a license. Also prevents the session removal at playback
+   *   stop, as-to be able to re-use it later.
+   */
+  persistentSessionOnlinePlayback: boolean;
+  /**
+   * Persistent sessions metadata to load before starting playback
+   */
+  persistentSessionsMetadata: PersistentSessionMetadata[];
+  /**
+   * <i>Optional.</i> <br>
+   *   A dictionary which maps key system IDs to advanced DRM configuration for
+   *   those key systems.
+   */
+  advanced: Record<string, AdvancedDrmConfiguration>;
+  /**
+   *  <i>Optional.</i><br>
+   *   If given, this function is called with the init data from the
+   *   manifest/media and should return the (possibly transformed) init data to
+   *   pass to the browser.
+   */
+  initDataTransform: InitDataTransform | undefined;
+  /**
+   * <i>Optional.</i><br>
+   *   If set to <code>true</code>, prints logs containing the license exchange.
+   *   This includes the init data, request, and response data, printed as base64
+   *   strings.  Don't use in production, for debugging only; has no affect in
+   *   release builds as logging is removed.
+   */
+  logLicenseExchange: boolean;
+  /**
+   * <i>Defaults to 1.</i> <br>
+   *   The frequency in seconds with which to check the expiration of a session.
+   */
+  updateExpirationTime: number;
+  /**
+   * <i>Defaults ['com.microsoft.playready'] on Xbox One and PlayStation 4, and
+   *   an empty array for all other browsers.</i> <br>
+   *   Specifies the priorties of available DRM key systems.
+   */
+  preferredKeySystems: string[];
+  //  A map of key system name to key system name.
+  keySystemsMapping: Record<string, string>;
+  /**
+   * <i>Defaults to true on Xbox One, and false for all other browsers.</i><br>
+   *   When true parse DRM init data from pssh boxes in media and init segments
+   *   and ignore 'encrypted' events.
+   *   This is required when using in-band key rotation on Xbox One.
+   */
+  parseInbandPsshEnabled: boolean;
+  /**
+   * <i>By default (''), do not check the HDCP version.</i><br>
+   *   Indicates the minimum version of HDCP to start the playback of encrypted
+   *   streams. <b>May be ignored if not supported by the device.</b>
+   */
+  minHdcpVersion: string;
+  /**
+   * <i>Defaults to false on Tizen 2, and true for all other browsers.</i><br>
+   *   When true indicate that the player doesn't ignore duplicate init data.
+   *   Note: Tizen 2015 and 2016 models will send multiple webkitneedkey events
+   *   with the same init data. If the duplicates are supressed, playback
+   *   will stall without errors.
+   */
+  ignoreDuplicateInitData: boolean;
+}
 
 /**
  * The StreamingEngine's configuration options.
