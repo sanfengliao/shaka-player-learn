@@ -350,7 +350,7 @@ export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<Segmen
    * @param {number} time
    * @param {boolean=} allowNonIndepedent
    * @param {boolean=} reverse
-   * @return {?shaka.media.SegmentIterator}
+   * @return
    * @export
    */
   getIteratorForTime(time: number, allowNonIndepedent = false, reverse = false) {
@@ -482,7 +482,7 @@ class SegmentIterator implements Iterator<SegmentReference | null> {
     return ref;
   }
 
-  next(): IteratorResult<SegmentReference | null, any> {
+  next(): IteratorResult<SegmentReference | null, SegmentReference | null> {
     const ref = this.segmentIndex_.get(this.currentPosition_);
 
     if (!this.reverse) {

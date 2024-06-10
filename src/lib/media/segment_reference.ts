@@ -121,7 +121,7 @@ export class InitSegmentReference {
    * @param reference2
    * @return {boolean}
    */
-  static equal(reference1: InitSegmentReference, reference2: InitSegmentReference) {
+  static equal(reference1: InitSegmentReference | null, reference2: InitSegmentReference) {
     if (reference1 === reference2) {
       return true;
     } else if (!reference1 || !reference2) {
