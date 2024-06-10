@@ -24,14 +24,11 @@ export class Ewma {
 
     /**
      * Larger values of alpha expire historical data more slowly.
-     * @private {number}
      */
     this.alpha_ = Math.exp(Math.log(0.5) / halfLife);
 
-    /** @private {number} */
     this.estimate_ = 0;
 
-    /** @private {number} */
     this.totalWeight_ = 0;
   }
 

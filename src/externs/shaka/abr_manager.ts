@@ -90,12 +90,7 @@ export interface AbrManager {
    *     A reference to the request
    * @exportDoc
    */
-  segmentDownloaded(
-    deltaTimeMs: number,
-    numBytes: number,
-    allowSwitch: number,
-    request: Request
-  ): void;
+  segmentDownloaded(deltaTimeMs: number, numBytes: number, allowSwitch: boolean, request: Request | null): void;
 
   /**
    * Notifies the ABR that it is a time to suggest new streams. This is used by
@@ -168,11 +163,7 @@ export interface AbrManager {
  *
  * @exportDoc
  */
-export type SwitchCallback = (
-  variant: Variant,
-  clearBuffer: boolean,
-  bufferLength: number
-) => void;
+export type SwitchCallback = (variant: Variant, clearBuffer: boolean, bufferLength: number) => void;
 
 /**
  * A factory for creating the abr manager.

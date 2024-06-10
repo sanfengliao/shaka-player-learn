@@ -3,6 +3,7 @@ import { NetworkingEngine } from '../net/network_engine';
 import { FakeEventTarget } from '../util/fake_event_target';
 import { IDestroyable } from '../util/i_destroyable';
 import { PlayerConfiguration } from '../util/player_configuration';
+import { AdaptationSetCriteria } from './adaptation_set_criteria';
 import { DrmEngine } from './drm_engtine';
 import { ManifestFilterer } from './manifest_filterer';
 import { RegionTimeline } from './region_timeline';
@@ -14,6 +15,8 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
   private startTimeOfLoad_: number;
 
   private networkingEngine_: NetworkingEngine;
+
+  private currentAdaptationSetCriteria_: AdaptationSetCriteria | null = null;
 
   constructor(
     assetUri: string,
