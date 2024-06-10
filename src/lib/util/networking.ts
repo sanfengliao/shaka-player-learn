@@ -5,6 +5,7 @@
  */
 
 import { RetryParameters } from '../../externs/shaka/net';
+import { StreamDataCallback } from '../media/segment_prefetch';
 import { NetworkingEngine } from '../net/network_engine';
 
 /**
@@ -32,7 +33,7 @@ export class Networking {
     start: number | null,
     end: number | null,
     retryParameters: RetryParameters,
-    streamDataCallback?: (data: BufferSource) => Promise<void>
+    streamDataCallback: StreamDataCallback
   ) {
     const request = NetworkingEngine.makeRequest(uris, retryParameters, streamDataCallback);
 

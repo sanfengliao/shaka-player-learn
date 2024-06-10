@@ -321,7 +321,7 @@ export class SegmentPrefetchOperation {
   }
 }
 
-type StreamDataCallback = ((data: BufferSource) => Promise<void>) | null;
+export type StreamDataCallback = ((data: BufferSource) => Promise<void>) | null;
 
 /**
  *  A callback function that fetches a segment.

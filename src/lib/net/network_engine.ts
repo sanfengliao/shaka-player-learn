@@ -9,6 +9,7 @@ import {
 } from '../../externs/shaka/net';
 import { Uri } from '../../third_party/closure-uri/uri';
 import { asserts } from '../debug/asserts';
+import { StreamDataCallback } from '../media/segment_prefetch';
 import { AbortableOperation } from '../util/abortable_operation';
 import { BufferUtils } from '../util/buffer_utils';
 import { ShakaError } from '../util/error';
@@ -138,11 +139,7 @@ export class NetworkingEngine extends FakeEventTarget implements IDestroyable {
    * @return
    * @export
    */
-  static makeRequest(
-    uris: string[],
-    retryParams: RetryParameters,
-    streamDataCallback?: (buffer: BufferSource) => Promise<void>
-  ): Request {
+  static makeRequest(uris: string[], retryParams: RetryParameters, streamDataCallback: StreamDataCallback): Request {
     return {
       uris: uris,
       method: 'GET',

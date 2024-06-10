@@ -34,6 +34,7 @@ export interface RetryParameters {
   connectionTimeout: number;
 }
 
+type StreamDataCallback = ((source: BufferSource) => Promise<void>) | null;
 /**
  * @description
  * Defines a network request.  This is passed to one or more request filters
@@ -83,7 +84,7 @@ export interface Request {
    */
   initDataType?: string;
   //  A callback function to handle the chunked data of the ReadableStream.
-  streamDataCallback?: (source: BufferSource) => Promise<void>;
+  streamDataCallback: StreamDataCallback;
   requestStartTime?: number;
   timeToFirstByte?: number;
   //  A number representing the order the packet within the request.
