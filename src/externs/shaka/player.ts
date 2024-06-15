@@ -256,7 +256,7 @@ export interface MediaQualityInfo {
   /**
    * Specifies the maximum sampling rate of the content.
    */
-  audioSamplingRate?: number;
+  audioSamplingRate: number | null;
   /**
    * The bandwidth in bits per second.
    */
@@ -289,7 +289,7 @@ export interface MediaQualityInfo {
   /**
    * The number of audio channels, or null if unknown.
    */
-  channelsCount?: number;
+  channelsCount: number | null;
   /**
    * The pixel aspect ratio value; e.g. "1:1".
    */

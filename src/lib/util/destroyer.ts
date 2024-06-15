@@ -33,12 +33,12 @@ export class Destroyer {
    * will resolve once the callback terminates. The promise will never be
    * rejected.
    */
-  destroy() {
+  async destroy(): Promise<void> {
     if (this.destroyed_) {
-      return this.waitOnDestroy_;
+      return this.waitOnDestroy_ as any;
     }
     this.destroyed_ = true;
-    this.onDestroy_().then(
+    return this.onDestroy_().then(
       () => {
         this.waitOnDestroy_.resolve();
       },

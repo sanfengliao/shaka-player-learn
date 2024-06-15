@@ -139,7 +139,11 @@ export class NetworkingEngine extends FakeEventTarget implements IDestroyable {
    * @return
    * @export
    */
-  static makeRequest(uris: string[], retryParams: RetryParameters, streamDataCallback: StreamDataCallback): Request {
+  static makeRequest(
+    uris: string[],
+    retryParams: RetryParameters,
+    streamDataCallback: StreamDataCallback | null = null
+  ): Request {
     return {
       uris: uris,
       method: 'GET',
@@ -414,7 +418,7 @@ export class NetworkingEngine extends FakeEventTarget implements IDestroyable {
     }
 
     const progressSupport = object.progressSupport;
-    const backoffOperation = AbortableOperation.notAbortable(backoff.attemp());
+    const backoffOperation = AbortableOperation.notAbortable(backoff.attempt());
 
     let connectionTimer: Timer;
     let stallTimer: Timer;

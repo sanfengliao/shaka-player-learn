@@ -491,6 +491,7 @@ export class MediaSourceEngine implements IDestroyable {
       return 0;
     }
 
+    // TODO(sanfeng): TextEngine
     if (contentType === ContentType.TEXT) {
       return this.textEngine_.bufferedAheadOf(time);
     } else {
@@ -647,7 +648,7 @@ export class MediaSourceEngine implements IDestroyable {
     data: BufferSource,
     reference: SegmentReference | null,
     stream: Stream,
-    hasClosedCaptions: boolean,
+    hasClosedCaptions: boolean | null,
     seeked = false,
     adaptation = false,
     isChunkedData = false,
@@ -996,7 +997,7 @@ export class MediaSourceEngine implements IDestroyable {
    *
    * @param reason  reason Valid reasons are 'network' and 'decode'.
    */
-  async endOfStream(reason: EndOfStreamError) {
+  async endOfStream(reason?: EndOfStreamError) {
     await this.enqueueBlockingOperation_(() => {
       if (this.ended() || this.mediaSource_.readyState === 'closed') {
         return;

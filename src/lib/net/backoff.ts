@@ -37,10 +37,7 @@ export class Backoff {
       // intended user of auto-reset mode), the first attempt was implied, so we
       // reset numAttempts to 1.  Therefore maxAttempts (which includes the
       // first attempt) must be at least 2 for us to see a delay.
-      asserts.assert(
-        this.maxAttempts_ >= 2,
-        'maxAttempts must be >= 2 for autoReset == true'
-      );
+      asserts.assert(this.maxAttempts_ >= 2, 'maxAttempts must be >= 2 for autoReset == true');
       this.numAttempts_ = 1;
     }
   }
@@ -49,7 +46,7 @@ export class Backoff {
    * @return {!Promise} Resolves when the caller may make an attempt, possibly
    *   after a delay.  Rejects if no more attempts are allowed.
    */
-  async attemp() {
+  async attempt() {
     if (this.numAttempts_ >= this.maxAttempts_) {
       if (this.autoReset_) {
         this.reset_();
@@ -73,10 +70,7 @@ export class Backoff {
 
     // Fuzz the delay to avoid tons of clients hitting the server at once
     // after it recovers from whatever is causing it to fail.
-    const fuzzDelayMs = Backoff.fuzz_(
-      this.nextUnfuzzedDelay_,
-      this.fuzzFactor_
-    );
+    const fuzzDelayMs = Backoff.fuzz_(this.nextUnfuzzedDelay_, this.fuzzFactor_);
 
     await new Promise<void>((resolve) => {
       Backoff.defer(fuzzDelayMs, resolve);

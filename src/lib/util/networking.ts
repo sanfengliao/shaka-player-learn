@@ -33,7 +33,7 @@ export class Networking {
     start: number | null,
     end: number | null,
     retryParameters: RetryParameters,
-    streamDataCallback: StreamDataCallback
+    streamDataCallback: StreamDataCallback | null = null
   ) {
     const request = NetworkingEngine.makeRequest(uris, retryParameters, streamDataCallback);
 

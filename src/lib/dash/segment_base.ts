@@ -263,8 +263,8 @@ export class SegmentBase {
    * Also checks for a valid byte range, which is not required for callers from
    * SegmentTemplate.
    *
-   * @param {shaka.dash.DashParser.Context} context
-   * @param {shaka.media.InitSegmentReference} initSegmentReference
+   * @param context
+   * @param initSegmentReference
    * @private
    */
   static checkSegmentIndexRangeSupport_(context: DashParserContext, initSegmentReference: InitSegmentReference | null) {

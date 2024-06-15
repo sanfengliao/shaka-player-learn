@@ -426,7 +426,7 @@ export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<Segmen
   }
 }
 
-class SegmentIterator implements Iterator<SegmentReference | null> {
+export class SegmentIterator implements Iterator<SegmentReference | null> {
   private currentPartialPosition_: number;
   private currentPosition_: number;
   private segmentIndex_: SegmentIndex;
