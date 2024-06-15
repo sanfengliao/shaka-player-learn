@@ -6,7 +6,7 @@ import { IReleasable } from '../util/i_releasable';
 import { Timer } from '../util/timer';
 import { SegmentReference } from './segment_reference';
 
-export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<SegmentReference | null> {
+export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<SegmentReference> {
   protected references: SegmentReference[];
 
   /**
@@ -331,7 +331,7 @@ export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<Segmen
 
   [Symbol.iterator]() {
     const iter = this.getIteratorForTime(0);
-    return iter as Iterator<SegmentReference | null>;
+    return iter as Iterator<SegmentReference>;
   }
 
   /**

@@ -11,8 +11,23 @@ import { asserts } from '../debug/asserts';
 import { IReleasable } from './i_releasable';
 import { MultiMap } from './multi_map';
 
-export class EventManager implements IReleasable {
-  bindingMap_: MultiMap<Binding_> | null = new MultiMap();
+type GetEventKey<T> = T extends {
+  addEventListener(
+    type: infer K,
+    listener: (this: any, ev: any) => any,
+    options?: boolean | AddEventListenerOptions
+  ): void;
+  addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions
+  ): void;
+}
+  ? K
+  : never;
+
+export class EventManager<T extends EventTarget> implements IReleasable {
+  bindingMap_: MultiMap<Binding_<T>> | null = new MultiMap();
   release(): void {
     this.removeAll();
     this.bindingMap_ = null;
@@ -29,16 +44,11 @@ export class EventManager implements IReleasable {
    *    call preventDefault(), which improves scrolling performance.
    * @export
    */
-  listen(
-    target: EventTarget,
-    type: string,
-    listener: EventListener,
-    options?: boolean | AddEventListenerOptions
-  ) {
+  listen(target: T, type: GetEventKey<T>, listener: EventListener, options?: boolean | AddEventListenerOptions) {
     if (!this.bindingMap_) {
       return;
     }
-    this.bindingMap_.push(type, new Binding_(target, type, listener, options));
+    this.bindingMap_.push(type as any, new Binding_(target, type, listener, options));
   }
 
   /**
@@ -53,12 +63,7 @@ export class EventManager implements IReleasable {
    *    call preventDefault(), which improves scrolling performance.
    * @export
    */
-  listenOnce(
-    target: EventTarget,
-    type: string,
-    listener: EventListener,
-    options?: boolean | AddEventListenerOptions
-  ) {
+  listenOnce(target: T, type: GetEventKey<T>, listener: EventListener, options?: boolean | AddEventListenerOptions) {
     if (!this.bindingMap_) {
       return;
     }
@@ -77,7 +82,7 @@ export class EventManager implements IReleasable {
    * @export
    */
 
-  unlisten(target: EventTarget, type: string, listener?: EventListener) {
+  unlisten(target: T, type: GetEventKey<T>, listener?: EventListener) {
     if (!this.bindingMap_) {
       return;
     }
@@ -110,23 +115,18 @@ export class EventManager implements IReleasable {
   }
 }
 
-class Binding_ {
-  target: EventTarget | null = null;
-  type: string;
+class Binding_<T extends EventTarget> {
+  target: T | null = null;
+  type: GetEventKey<T>;
   listener: EventListener | null = null;
   options: boolean | AddEventListenerOptions;
 
-  constructor(
-    target: EventTarget,
-    type: string,
-    listener: EventListener,
-    options?: boolean | AddEventListenerOptions
-  ) {
+  constructor(target: T, type: GetEventKey<T>, listener: EventListener, options?: boolean | AddEventListenerOptions) {
     this.target = target;
     this.type = type;
     this.listener = listener;
     this.options = Binding_.convertOptions_(target, options);
-    this.target.addEventListener(this.type, this.listener, this.options);
+    this.target.addEventListener(this.type as any, this.listener, this.options);
   }
   /**
    * Detaches the event listener from the event target. This does nothing if
@@ -134,7 +134,7 @@ class Binding_ {
    */
   unlisten() {
     asserts.assert(this.target, 'Missing target');
-    this.target!.removeEventListener(this.type, this.listener, this.options);
+    this.target!.removeEventListener(this.type as any, this.listener, this.options);
 
     this.target = null;
     this.listener = null;
@@ -158,10 +158,7 @@ class Binding_ {
     // ignoring an important option.
     const ignored = new Set(['passive', 'capture']);
     const keys = Object.keys(value).filter((k) => !ignored.has(k));
-    asserts.assert(
-      keys.length == 0,
-      'Unsupported flag(s) to addEventListener: ' + keys.join(',')
-    );
+    asserts.assert(keys.length == 0, 'Unsupported flag(s) to addEventListener: ' + keys.join(','));
     const supports = Binding_.doesSupportObject_(target);
     if (supports) {
       return value;

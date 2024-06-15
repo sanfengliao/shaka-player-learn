@@ -42,11 +42,7 @@ export class TransmuxerEngine {
    * @param {number} priority
    * @export
    */
-  static registerTransmuxer(
-    mimeType: string,
-    plugin: TransmuxerPlugin,
-    priority: number
-  ) {
+  static registerTransmuxer(mimeType: string, plugin: TransmuxerPlugin, priority: number) {
     const normalizedMimetype = TransmuxerEngine.normalizeMimeType_(mimeType);
     const key = normalizedMimetype + '-' + priority;
     TransmuxerEngine.transmuxerMap_[key] = {
@@ -104,7 +100,7 @@ export class TransmuxerEngine {
    * @param {string=} contentType
    * @return {boolean}
    */
-  static isSupported(mimeType: string, _contentType: string) {
+  static isSupported(mimeType: string, _contentType: string = '') {
     const transmuxerPlugin = TransmuxerEngine.findTransmuxer(mimeType);
     if (!transmuxerPlugin) {
       return false;
@@ -119,10 +115,7 @@ export class TransmuxerEngine {
    * @return {string}
    */
   static convertCodecs(contentType: string, mimeType: string) {
-    const transmuxerPlugin = TransmuxerEngine.findTransmuxer(
-      mimeType,
-      contentType
-    );
+    const transmuxerPlugin = TransmuxerEngine.findTransmuxer(mimeType, contentType);
     if (!transmuxerPlugin) {
       return mimeType;
     }

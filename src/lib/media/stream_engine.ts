@@ -63,4 +63,33 @@ export class StreamingEngine implements IDestroyable {
 
     return netEngine.request(requestType, request, { type, stream, segment });
   }
+  /**
+   * The fudge factor for appendWindowStart.  By adjusting the window backward, we
+   * avoid rounding errors that could cause us to remove the keyframe at the start
+   * of the Period.
+   *
+   * NOTE: This was increased as part of the solution to
+   * https://github.com/shaka-project/shaka-player/issues/1281
+   *
+   */
+  private static APPEND_WINDOW_START_FUDGE_ = 0.1;
+  /**
+   * The fudge factor for appendWindowEnd.  By adjusting the window backward, we
+   * avoid rounding errors that could cause us to remove the last few samples of
+   * the Period.  This rounding error could then create an artificial gap and a
+   * stutter when the gap-jumping logic takes over.
+   *
+   */
+  private static APPEND_WINDOW_END_FUDGE_ = 0.01;
+  /**
+   * The maximum number of segments by which a stream can get ahead of other
+   * streams.
+   *
+   * Introduced to keep StreamingEngine from letting one media type get too far
+   * ahead of another.  For example, audio segments are typically much smaller
+   * than video segments, so in the time it takes to fetch one video segment, we
+   * could fetch many audio segments.  This doesn't help with buffering, though,
+   * since the intersection of the two buffered ranges is what counts.
+   */
+  private static MAX_RUN_AHEAD_SEGMENTS_ = 1;
 }

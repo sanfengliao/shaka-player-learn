@@ -229,7 +229,7 @@ export interface AdsConfiguration {
    * Hisense, PlayStation 4, PlayStation5, Xbox whose default value is
    * <code>true</code>.
    */
-  customPlayHeadTracker: boolean;
+  customPlayheadTracker: boolean;
   /**
    * If this is true, we will load Client Side ads without waiting for a play
    * event.
@@ -488,6 +488,12 @@ export interface StreamingConfiguration {
    */
   bufferingGoal: number;
   /**
+   * The maximum number of seconds of content that the StreamingEngine will keep
+   * in buffer behind the playhead when it appends a new media segment.
+   * The StreamingEngine will evict content to meet this limit.
+   */
+  bufferBehind: number;
+  /**
    * The minimum duration in seconds of buffer overflow the StreamingEngine
    * requires to start removing content from the buffer.
    * Values less than <code>1.0</code> are not recommended.
@@ -547,7 +553,7 @@ export interface StreamingConfiguration {
    * will either seek or pause/play to resolve the stall, depending on the value
    * of <code>stallSkip</code>.
    */
-  stallEnabled: number;
+  stallEnabled: boolean;
   /**
    * The maximum number of seconds that may elapse without the playhead moving
    * (when playback is expected) before it will be labeled as a stall.
@@ -568,12 +574,21 @@ export interface StreamingConfiguration {
    */
   useNativeHlsOnSafari: boolean;
   /**
+   * Desktop Safari has both MediaSource and their native HLS implementation.
+   * Depending on the application's needs, it may prefer one over the other.
+   * Warning when disabled: Where single-key DRM streams work fine, multi-keys
+   * streams is showing unexpected behaviours (stall, audio playing with video
+   * freezes, ...). Use with care.
+   * Defaults to <code>true</code>.
+   */
+  useNativeHlsForFairPlay: boolean;
+  /**
    * The maximum difference, in seconds, between the times in the manifest and
    * the times in the segments.  Larger values allow us to compensate for more
    * drift (up to one segment duration).  Smaller values reduce the incidence of
    * extra segment requests necessary to compensate for drift.
    */
-  inaccurateManifestTolerance: boolean;
+  inaccurateManifestTolerance: number;
 
   /**
    * If <code>true</code>, low latency streaming mode is enabled. If
@@ -689,6 +704,13 @@ export interface StreamingConfiguration {
    */
   liveSyncMinPlaybackRate: number;
   /**
+   * If <code>true</code>, panic mode for live sync is enabled. When enabled,
+   * will set the playback rate to the <code>liveSyncMinPlaybackRate</code>
+   * until playback has continued past a rebuffering for longer than the
+   * <code>liveSyncPanicThreshold</code>. Defaults to <code>false</code>.
+   */
+  liveSyncPanicMode: boolean;
+  /**
    * Number of seconds that playback stays in panic mode after a rebuffering.
    * Defaults to <code>60</code>
    */
@@ -705,15 +727,21 @@ export interface StreamingConfiguration {
    */
   minTimeBetweenRecoveries: number;
   /**
+   *  Adapt the playback rate of the player to keep the buffer full. Defaults to
+   *   <code>false</code>.
+   */
+  vodDynamicPlaybackRate: boolean;
+  /**
    * Playback rate to use if the buffer is too small. Defaults to
    * <code>0.95</code>.
    */
-  vodDynamicPlaybackRate: number;
+
+  vodDynamicPlaybackRateLowBufferRate: number;
   /**
    * Ratio of the <code>bufferingGoal</code> as the low threshold for
-   * setting the playback rate to
-   * <code>vodDynamicPlaybackRateLowBufferRate</code>.
-   * Defaults to <code>0.5</code>.
+   *   setting the playback rate to
+   *   <code>vodDynamicPlaybackRateLowBufferRate</code>.
+   *   Defaults to <code>0.5</code>.
    */
   vodDynamicPlaybackRateBufferRatio: number;
   /**
@@ -807,7 +835,7 @@ export interface CmcdConfiguration {
    * If <code>true</code>, enable CMCD data to be sent with media requests.
    * Defaults to <code>false</code>.
    */
-  enable: boolean;
+  enabled: boolean;
   /**
    * If <code>true</code>, send CMCD data using the header transmission mode
    * instead of query args.  Defaults to <code>false</code>.
@@ -922,7 +950,7 @@ export interface PlayerConfiguration {
   autoShowText: AutoShowText;
 
   //  DRM configuration and settings.
-  drm: DrmConfiguration;
+  drm: DrmConfiguration | null;
 
   // Manifest configuration and settings.
   manifest: ManifestConfiguration;
@@ -938,6 +966,7 @@ export interface PlayerConfiguration {
   cmcd: CmcdConfiguration;
   cmsd: CmsdConfiguration;
   offline: OfflineConfiguration;
+  lcevc: LcevcConfiguration;
   /**
    * The preferred language to use for audio tracks.  If not given it will use
    * the <code>'main'</code> track.
@@ -998,6 +1027,10 @@ export interface PlayerConfiguration {
    * Changing this during playback will not affect the current playback.
    */
   preferForcedSubs: boolean;
+  /**
+   * If true, a spatial audio track is preferred.  Defaults to false.
+   */
+  preferSpatialAudio: boolean;
   /**
    * The application restrictions to apply to the tracks.  These are "hard"
    * restrictions.  Any track that fails to meet these restrictions will not
@@ -1753,4 +1786,12 @@ export interface StatsInfo {
   switchHistory: TrackChoice[];
   // A history of the state changes.
   stateHistory: StateChange[];
+}
+
+export interface ID3Metadata {
+  cueTime: number | null;
+  data: Uint8Array;
+  frames: MetadataFrame[];
+  dts: number | null;
+  pts: number | null;
 }

@@ -173,4 +173,4 @@ export interface TextDisplayer {
  *
  * @exportDoc
  */
-export type TextDisplayerFactory = () => TextDisplayer;
+export type TextDisplayerFactory = () => TextDisplayer | null;

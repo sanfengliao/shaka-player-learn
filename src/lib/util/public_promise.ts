@@ -4,10 +4,11 @@
  * methods.
  *
  */
-export class PublicPromise<T = any> {
+
+export class PublicPromise<T = void, R = any> {
   constructor() {
     let resolvePromise!: (value: T | PromiseLike<T>) => void;
-    let rejectPromise!: (reason?: any) => void;
+    let rejectPromise!: (reason?: R) => void;
 
     // Promise.call causes an error.  It seems that inheriting from a native
     // Promise is not permitted by JavaScript interpreters.
@@ -25,7 +26,7 @@ export class PublicPromise<T = any> {
 
     // Now cast the Promise object to our subclass PublicPromise so that the
     // compiler will permit us to attach resolve() and reject() to it.
-    const publicPromise = promise as unknown as PublicPromise<T>;
+    const publicPromise = promise as unknown as PublicPromise<T, R>;
     publicPromise.resolve = resolvePromise;
     publicPromise.reject = rejectPromise;
 
@@ -34,5 +35,5 @@ export class PublicPromise<T = any> {
 
   resolve(value: T) {}
 
-  reject(reason: T) {}
+  reject(reason: R) {}
 }

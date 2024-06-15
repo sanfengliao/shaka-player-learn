@@ -51,7 +51,7 @@ export class Destroyer {
    * Checks if the object is destroyed and throws an error if it is.
    * @param error The inner error, if any.
    */
-  ensureNotDestroyed(error: any) {
+  ensureNotDestroyed(error?: any) {
     if (this.destroyed_) {
       if (error instanceof ShakaError && error.code == ShakaError.Code.OBJECT_DESTROYED) {
         throw error;
@@ -60,7 +60,7 @@ export class Destroyer {
     }
   }
 
-  static destroyedError(error: ShakaError) {
+  static destroyedError(error?: ShakaError) {
     return new ShakaError(
       ShakaError.Severity.CRITICAL,
       ShakaError.Category.PLAYER,

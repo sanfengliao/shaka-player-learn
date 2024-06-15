@@ -4,11 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
-  CaptionDecoderPlugin,
-  CeaParserPlugin,
-  ClosedCaption,
-} from '../../externs/shaka/cea';
+import { CaptionDecoderPlugin, CeaParserPlugin, ClosedCaption } from '../../externs/shaka/cea';
 import { DummyCaptionDecoder } from '../cea/dummy_caption_decoder';
 import { DummyCeaParser } from '../cea/dummy_cea_parser';
 import { BufferUtils } from '../util/buffer_utils';
@@ -54,7 +50,6 @@ export interface IClosedCaptionParser {
  * Closed Caption Parser provides all operations for parsing the closed captions
  * embedded in Dash videos streams.
  *
- * @implements {shaka.media.IClosedCaptionParser}
  * @final
  * @export
  */
@@ -64,11 +59,7 @@ export class ClosedCaptionParser implements IClosedCaptionParser {
   private ceaDecoder_ = new DummyCaptionDecoder();
   static decoderFactory_: CaptionDecoderPlugin;
   constructor(mimeType: string) {
-    /** @private {!shaka.extern.ICeaParser} */
-
-    const parserFactory = ClosedCaptionParser.findParser(
-      mimeType.toLowerCase()
-    );
+    const parserFactory = ClosedCaptionParser.findParser(mimeType.toLowerCase());
     if (parserFactory) {
       this.ceaParser_ = parserFactory();
     }
