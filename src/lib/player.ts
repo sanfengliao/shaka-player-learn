@@ -7,11 +7,12 @@ import { FakeEvent } from './util/fake_event';
 import { FakeEventTarget } from './util/fake_event_target';
 import { Mutex } from './util/mutex';
 import { Platform } from './util/platform';
-import { PlayerConfiguration as IPlayerConfiguration } from '../externs/shaka/player';
+import { ID3Metadata, PlayerConfiguration as IPlayerConfiguration, MetadataFrame } from '../externs/shaka/player';
 import { PlayerConfiguration } from './util/player_configuration';
 import { log } from './debug/log';
 import { Manifest } from '../externs/shaka/manifest';
-import { MediaSourceEngine } from './media/media_source_engine';
+import { MediaSourceEngine, OnMetadata } from './media/media_source_engine';
+import { TextDisplayer } from '../externs/shaka/text';
 
 export class Player extends FakeEventTarget {
   static LoadMode = {
@@ -20,7 +21,7 @@ export class Player extends FakeEventTarget {
     MEDIA_SOURCE: 2,
     SRC_EQUALS: 3,
   } as const;
-  private video_: HTMLMediaElement | null = null;
+  private video_: HTMLMediaElement = null as any;
   private videoContainer_: HTMLElement | null = null;
   private loadMode_: number = Player.LoadMode.NOT_LOADED;
   private assetUri_?: string;
@@ -141,9 +142,95 @@ export class Player extends FakeEventTarget {
     }
   }
 
-  // TODO(sanfeng): implement initializeMediaSourceEngineInner_
-  initializeMediaSourceEngineInner_() {
-    throw new Error('Method not implemented.');
+  async initializeMediaSourceEngineInner_() {
+    asserts.assert(
+      Platform.supportsMediaSource(),
+      'We should not be initializing media source on a platform that ' + 'does not support media source.'
+    );
+    asserts.assert(this.video_, 'We should have a media element when initializing media source.');
+    asserts.assert(this.mediaSourceEngine_ == null, 'We should not have a media source engine yet.');
+    this.makeStateChangeEvent_('media-source');
+
+    const textDisplayerFactory = this.config_.textDisplayFactory;
+    const textDisplayer = textDisplayerFactory();
+    // When changing text visibility we need to update both the text displayer
+    // and streaming engine because we don't always stream text. To ensure
+    // that the text displayer and streaming engine are always in sync, wait
+    // until they are both initialized before setting the initial value.
+    // TODO(sanfeng): TextDisplayer
+
+    const mediaSourceEngine = this.createMediaSourceEngine(this.video_, textDisplayer, (metadata, offset, endTime) => {
+      this.processTimedMetadataMediaSrc_(metadata, offset, endTime);
+    });
+    mediaSourceEngine.configure(this.config_.mediaSource);
+    const { segmentRelativeVttTiming } = this.config_.manifest;
+    mediaSourceEngine.setSegmentRelativeVttTiming(segmentRelativeVttTiming);
+
+    // Wait for media source engine to finish opening. This promise should
+    // NEVER be rejected as per the media source engine implementation.
+    await mediaSourceEngine.open();
+
+    // Wait until it is ready to actually store the reference.
+    this.mediaSourceEngine_ = mediaSourceEngine;
+  }
+
+  private processTimedMetadataMediaSrc_(metadata: ID3Metadata[], offset: number, segmentEndTime: number | null) {
+    for (const sample of metadata) {
+      if (sample.data && sample.cueTime && sample.frames) {
+        const start = sample.cueTime + offset;
+        let end = segmentEndTime;
+        if (end && start > end) {
+          end = start;
+        }
+
+        const metadataType = 'org.id3';
+        for (const frame of sample.frames) {
+          const payload = frame;
+          this.dispatchMetadataEvent_(start, end, metadataType, payload);
+        }
+
+        // TODO(sanfeng): adManager
+        // if (this.adManager_) {
+        //   this.adManager_.onHlsTimedMetadata(sample, start);
+        // }
+      }
+    }
+  }
+
+  /**
+   * Construct and fire a Player.Metadata event
+   *
+   * @param startTime
+   * @param  endTime
+   * @param  metadataType
+   * @param  payload
+   * @private
+   */
+  dispatchMetadataEvent_(startTime: number, endTime: number | null, metadataType: string, payload: MetadataFrame) {
+    asserts.assert(!endTime || startTime <= endTime, 'Metadata start time should be less or equal to the end time!');
+    const eventName = FakeEvent.EventName.Metadata;
+    const data = new Map()
+      .set('startTime', startTime)
+      .set('endTime', endTime)
+      .set('metadataType', metadataType)
+      .set('payload', payload);
+    this.dispatchEvent(Player.makeEvent_(eventName, data));
+  }
+
+  /**
+   * Create a new media source engine. This will ONLY be replaced by tests as a
+   * way to inject fake media source engine instances.
+   *
+   * @param {!HTMLMediaElement} mediaElement
+   * @param {!shaka.extern.TextDisplayer} textDisplayer
+   * @param {!function(!Array.<shaka.extern.ID3Metadata>, number, ?number)}
+   *  onMetadata
+   * @param {shaka.lcevc.Dec} lcevcDec
+   *
+   * @return {!shaka.media.MediaSourceEngine}
+   */
+  createMediaSourceEngine(mediaElement: HTMLMediaElement, textDisplayer: TextDisplayer | null, onMetadata: OnMetadata) {
+    return new MediaSourceEngine(mediaElement, textDisplayer, onMetadata);
   }
   /**
    * Detach the player from the current media element. Leaves the player in a
