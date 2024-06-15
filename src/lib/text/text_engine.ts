@@ -5,13 +5,7 @@
  */
 
 import { ClosedCaption } from '../../externs/shaka/cea';
-import {
-  ModifyCueCallback,
-  TextDisplayer,
-  TextParser,
-  TextParserPlugin,
-  TimeContext,
-} from '../../externs/shaka/text';
+import { ModifyCueCallback, TextDisplayer, TextParser, TextParserPlugin, TimeContext } from '../../externs/shaka/text';
 import { asserts } from '../debug/asserts';
 import { Deprecate } from '../deprecate/deprecate';
 import { ClosedCaptionParser } from '../media/closed_caption_parser';
@@ -90,10 +84,7 @@ export class TextEngine {
       // An actual parser is available.
       return true;
     }
-    if (
-      mimeType == MimeUtils.CEA608_CLOSED_CAPTION_MIMETYPE ||
-      mimeType == MimeUtils.CEA708_CLOSED_CAPTION_MIMETYPE
-    ) {
+    if (mimeType == MimeUtils.CEA608_CLOSED_CAPTION_MIMETYPE || mimeType == MimeUtils.CEA708_CLOSED_CAPTION_MIMETYPE) {
       return !!ClosedCaptionParser.findDecoder();
     }
     return false;
@@ -128,27 +119,16 @@ export class TextEngine {
    * @param {boolean} segmentRelativeVttTiming
    * @param {string} manifestType
    */
-  initParser(
-    mimeType: string,
-    sequenceMode: boolean,
-    segmentRelativeVttTiming: boolean,
-    manifestType: string
-  ) {
+  initParser(mimeType: string, sequenceMode: boolean, segmentRelativeVttTiming: boolean, manifestType: string) {
     // No parser for CEA, which is extracted from video and side-loaded
     // into TextEngine and TextDisplayer.
-    if (
-      mimeType == MimeUtils.CEA608_CLOSED_CAPTION_MIMETYPE ||
-      mimeType == MimeUtils.CEA708_CLOSED_CAPTION_MIMETYPE
-    ) {
+    if (mimeType == MimeUtils.CEA608_CLOSED_CAPTION_MIMETYPE || mimeType == MimeUtils.CEA708_CLOSED_CAPTION_MIMETYPE) {
       this.parser_ = null;
       return;
     }
 
     const factory = TextEngine.parserMap_[mimeType];
-    asserts.assert(
-      factory,
-      'Text type negotiation should have happened already'
-    );
+    asserts.assert(factory, 'Text type negotiation should have happened already');
     this.parser_ = factory();
     if (this.parser_.setSequenceMode) {
       this.parser_.setSequenceMode(sequenceMode);
@@ -183,12 +163,7 @@ export class TextEngine {
    * @param {?string=} uri
    * @return {!Promise}
    */
-  async appendBuffer(
-    buffer: BufferSource,
-    startTime?: number,
-    endTime?: number,
-    uri?: string
-  ) {
+  async appendBuffer(buffer: BufferSource, startTime: number | null, endTime: number | null, uri: string | null) {
     asserts.assert(this.parser_, 'The parser should already be initialized');
 
     // Start the operation asynchronously to avoid blocking the caller.
@@ -204,9 +179,7 @@ export class TextEngine {
       return;
     }
 
-    const vttOffset = this.segmentRelativeVttTiming_
-      ? startTime
-      : this.timestampOffset_;
+    const vttOffset = this.segmentRelativeVttTiming_ ? startTime : this.timestampOffset_;
 
     const time: TimeContext = {
       periodStart: this.timestampOffset_,
@@ -216,19 +189,12 @@ export class TextEngine {
     };
 
     // Parse the buffer and add the new cues.
-    const allCues = this.parser_.parseMedia(
-      BufferUtils.toUint8(buffer),
-      time,
-      uri
-    );
+    const allCues = this.parser_.parseMedia(BufferUtils.toUint8(buffer), time, uri);
     for (const cue of allCues) {
       this.modifyCueCallback_(cue, uri || null, time);
     }
     const cuesToAppend = allCues.filter((cue) => {
-      return (
-        cue.startTime >= this.appendWindowStart_ &&
-        cue.startTime < this.appendWindowEnd_
-      );
+      return cue.startTime >= this.appendWindowStart_ && cue.startTime < this.appendWindowEnd_;
     });
 
     this.displayer_.append(cuesToAppend);
@@ -243,14 +209,8 @@ export class TextEngine {
     } else {
       // We already had something in buffer, and we assume we are extending
       // the range from the end.
-      asserts.assert(
-        this.bufferEnd_ != null,
-        'There should already be a buffered range end.'
-      );
-      asserts.assert(
-        startTime - this.bufferEnd_! <= 1,
-        'There should not be a gap in text references >1s'
-      );
+      asserts.assert(this.bufferEnd_ != null, 'There should already be a buffered range end.');
+      asserts.assert(startTime - this.bufferEnd_! <= 1, 'There should not be a gap in text references >1s');
     }
     this.bufferEnd_ = Math.min(endTime, this.appendWindowEnd_);
   }
@@ -266,43 +226,25 @@ export class TextEngine {
 
     if (this.displayer_ && this.displayer_.remove(startTime, endTime)) {
       if (this.bufferStart_ == null) {
-        asserts.assert(
-          this.bufferEnd_ == null,
-          'end must be null if startTime is null'
-        );
+        asserts.assert(this.bufferEnd_ == null, 'end must be null if startTime is null');
       } else {
-        asserts.assert(
-          this.bufferEnd_ != null,
-          'end must be non-null if startTime is non-null'
-        );
+        asserts.assert(this.bufferEnd_ != null, 'end must be non-null if startTime is non-null');
 
         // Update buffered range.
         if (endTime <= this.bufferStart_ || startTime >= this.bufferEnd_!) {
           // No intersection.  Nothing was removed.
-        } else if (
-          startTime <= this.bufferStart_ &&
-          endTime >= this.bufferEnd_!
-        ) {
+        } else if (startTime <= this.bufferStart_ && endTime >= this.bufferEnd_!) {
           // We wiped out everything.
           this.bufferStart_ = this.bufferEnd_ = null;
-        } else if (
-          startTime <= this.bufferStart_ &&
-          endTime < this.bufferEnd_!
-        ) {
+        } else if (startTime <= this.bufferStart_ && endTime < this.bufferEnd_!) {
           // We removed from the beginning of the range.
           this.bufferStart_ = endTime;
-        } else if (
-          startTime > this.bufferStart_ &&
-          endTime >= this.bufferEnd_!
-        ) {
+        } else if (startTime > this.bufferStart_ && endTime >= this.bufferEnd_!) {
           // We removed from the end of the range.
           this.bufferEnd_ = startTime;
         } else {
           // We removed from the middle?  StreamingEngine isn't supposed to.
-          asserts.assert(
-            false,
-            'removal from the middle is not supported by TextEngine'
-          );
+          asserts.assert(false, 'removal from the middle is not supported by TextEngine');
         }
       }
     }
@@ -358,10 +300,7 @@ export class TextEngine {
       return 0;
     }
 
-    asserts.assert(
-      this.bufferStart_ != null,
-      'start should not be null if end is not null'
-    );
+    asserts.assert(this.bufferStart_ != null, 'start should not be null if end is not null');
 
     return this.bufferEnd_ - Math.max(t, this.bufferStart_!);
   }
@@ -382,9 +321,7 @@ export class TextEngine {
     const captionsMap = this.closedCaptionsMap_.get(id);
     if (captionsMap) {
       for (const startAndEndTime of captionsMap.keys()) {
-        const cues = captionsMap!
-          .get(startAndEndTime)!
-          .filter((c) => c.endTime <= bufferEndTime);
+        const cues = captionsMap!.get(startAndEndTime)!.filter((c) => c.endTime <= bufferEndTime);
         if (cues) {
           this.displayer_!.append(cues);
         }
@@ -440,9 +377,7 @@ export class TextEngine {
       // stream in which they were embedded.
       this.applyVideoTimestampOffsetRecursive_(cue, videoTimestampOffset);
 
-      const keepThisCue =
-        cue.startTime >= this.appendWindowStart_ &&
-        cue.startTime < this.appendWindowEnd_;
+      const keepThisCue = cue.startTime >= this.appendWindowStart_ && cue.startTime < this.appendWindowEnd_;
       if (!keepThisCue) {
         continue;
       }
@@ -466,16 +401,10 @@ export class TextEngine {
     if (this.bufferStart_ == null) {
       this.bufferStart_ = Math.max(startTime, this.appendWindowStart_);
     } else {
-      this.bufferStart_ = Math.min(
-        this.bufferStart_,
-        Math.max(startTime, this.appendWindowStart_)
-      );
+      this.bufferStart_ = Math.min(this.bufferStart_, Math.max(startTime, this.appendWindowStart_));
     }
 
-    this.bufferEnd_ = Math.max(
-      this.bufferEnd_!,
-      Math.min(endTime, this.appendWindowEnd_)
-    );
+    this.bufferEnd_ = Math.max(this.bufferEnd_!, Math.min(endTime, this.appendWindowEnd_));
   }
 
   /**

@@ -42,7 +42,7 @@ export interface TextParser {
    *
    * @exportDoc
    */
-  parseMedia(data: Uint8Array, timeContext: TimeContext, uri?: string): Cue[];
+  parseMedia(data: Uint8Array, timeContext: TimeContext, uri: string | null): Cue[];
 
   /**
    * Notifies the stream if the manifest is in sequence mode or not.

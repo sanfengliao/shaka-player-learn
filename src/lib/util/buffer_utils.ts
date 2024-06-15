@@ -162,13 +162,10 @@ export class BufferUtils {
       bytesPerElement = Type.BYTES_PER_ELEMENT as number;
     }
     // Absolute end of the |data| view within |buffer|.
-    /** @suppress {strictMissingProperties} */
-    const dataEnd =
-      // @ts-ignore
-      ((data.byteOffset || 0) + data.byteLength) / bytesPerElement;
+    // @ts-expect-error
+    const dataEnd = ((data.byteOffset || 0) + data.byteLength) / bytesPerElement;
     // Absolute start of the result within |buffer|.
-    /** @suppress {strictMissingProperties} */
-    // @ts-ignore
+    // @ts-expect-error
     const rawStart = ((data.byteOffset || 0) + offset) / bytesPerElement;
     const start = Math.floor(Math.max(0, Math.min(rawStart, dataEnd)));
     // Absolute end of the result within |buffer|.

@@ -1,11 +1,16 @@
 import { asserts } from './debug/asserts';
 import { PreloadManager } from './media/preload_manager';
+import { NetworkingEngine } from './net/network_engine';
 import { ShakaError as ShakaError } from './util/error';
 import { EventManager } from './util/event_manager';
 import { FakeEvent } from './util/fake_event';
 import { FakeEventTarget } from './util/fake_event_target';
 import { Mutex } from './util/mutex';
 import { Platform } from './util/platform';
+import { PlayerConfiguration as IPlayerConfiguration } from '../externs/shaka/player';
+import { PlayerConfiguration } from './util/player_configuration';
+import { log } from './debug/log';
+import { Manifest } from '../externs/shaka/manifest';
 
 export class Player extends FakeEventTarget {
   static LoadMode = {
@@ -29,8 +34,73 @@ export class Player extends FakeEventTarget {
   private startTime_: number | undefined;
   private fullyLoaded_ = false;
 
+  private networkingEngine_: NetworkingEngine;
+
+  private config_: IPlayerConfiguration;
+
+  private manifest_: Manifest;
+
   constructor() {
     super();
+
+    this.config_ = this.defaultConfig_();
+  }
+
+  private defaultConfig_() {
+    const config = PlayerConfiguration.createDefault();
+    config.streaming.failureCallback = (error) => {};
+    return config;
+  }
+
+  /**
+   * @param {!shaka.util.Error} error
+   * @private
+   */
+  defaultStreamingFailureCallback_(error: ShakaError) {
+    // For live streams, we retry streaming automatically for certain errors.
+    // For VOD streams, all streaming failures are fatal.
+    if (!this.isLive()) {
+      return;
+    }
+
+    let retryDelaySeconds = null;
+    if (error.code == ShakaError.Code.BAD_HTTP_STATUS || error.code == ShakaError.Code.HTTP_ERROR) {
+      // These errors can be near-instant, so delay a bit before retrying.
+      retryDelaySeconds = 1;
+      if (this.config_.streaming.lowLatencyMode) {
+        retryDelaySeconds = 0.1;
+      }
+    } else if (error.code == ShakaError.Code.TIMEOUT) {
+      // We already waited for a timeout, so retry quickly.
+      retryDelaySeconds = 0.1;
+    }
+
+    if (retryDelaySeconds != null) {
+      error.severity = ShakaError.Severity.RECOVERABLE;
+      log.warning('Live streaming error.  Retrying automatically...');
+      // TODO(sanfeng): 实现StreamingEngine
+      // this.retryStreaming(retryDelaySeconds);
+    }
+  }
+
+  /**
+   * Get if the player is playing live content. If the player has not loaded
+   * content, this will return <code>false</code>.
+   *
+   * @return {boolean}
+   * @export
+   */
+  isLive() {
+    if (this.manifest_) {
+      return this.manifest_.presentationTimeline.isLive();
+    }
+
+    // For native HLS, the duration for live streams seems to be Infinity.
+    if (this.video_ && this.video_.src) {
+      return this.video_.duration == Infinity;
+    }
+
+    return false;
   }
   /**
    * Attaches the player to a media element.

@@ -18,6 +18,9 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
 
   private currentAdaptationSetCriteria_: AdaptationSetCriteria | null = null;
 
+  private queuedOperations_: Function[] = [];
+  private latePhaseQueuedOperations_: Function[] = [];
+
   constructor(
     assetUri: string,
     mimeType: string,
@@ -31,6 +34,16 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
     this.startTimeOfLoad_ = startTimeOfLoad;
     this.mimeType_ = mimeType;
     this.networkingEngine_ = playerInterface.networkingEngine;
+  }
+
+  addQueuedOperation(latePhase: boolean, callback: Function) {
+    const quene = latePhase ? this.latePhaseQueuedOperations_ : this.queuedOperations_;
+
+    if (quene) {
+      quene.push(callback);
+    } else {
+      callback();
+    }
   }
   /**
    * TODO(sanfeng) implement destroy
