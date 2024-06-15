@@ -32,7 +32,7 @@ export class ManifestFilterer {
    * @returns tracksChanged
    */
   async filterManifest(manifest: Manifest): Promise<boolean> {
-    await StreamUtils.filterManifest(this.drmEngine_, manifest, this.config_.drm.preferredKeySystems);
+    await StreamUtils.filterManifest(this.drmEngine_, manifest, this.config_.drm!.preferredKeySystems);
     if (!this.config_.streaming.dontChooseCodecs) {
       StreamUtils.chooseCodecsAndFilterManifest(
         manifest,
@@ -60,7 +60,7 @@ export class ManifestFilterer {
   filterManifestWithRestrictions(manifest: Manifest) {
     const tracksChanged = this.applyRestrictions(manifest);
     if (manifest) {
-      // TODO(sanfeng): 实现DRM
+      // TODO(sanfeng): DRMEngine
 
       this.checkRestrictedVariants(manifest);
     }
@@ -88,7 +88,7 @@ export class ManifestFilterer {
    */
   checkRestrictedVariants(manifest: Manifest) {
     const restrictedStatuses = ManifestFilterer.restrictedStatuses;
-    // TODO(sanfeng) 实现DRM
+    // TODO(sanfeng) DRMEngine
     const keyStatusMap: Record<string, any> = /* this.drmEngine_ ? this.drmEngine_.getKeyStatuses()  : */ {};
     const keyIds = Object.keys(keyStatusMap);
     const isGlobalStatus = keyIds.length && keyIds[0] == '00';

@@ -11,6 +11,7 @@ import { PlayerConfiguration as IPlayerConfiguration } from '../externs/shaka/pl
 import { PlayerConfiguration } from './util/player_configuration';
 import { log } from './debug/log';
 import { Manifest } from '../externs/shaka/manifest';
+import { MediaSourceEngine } from './media/media_source_engine';
 
 export class Player extends FakeEventTarget {
   static LoadMode = {
@@ -25,8 +26,8 @@ export class Player extends FakeEventTarget {
   private assetUri_?: string;
   private mutex_ = new Mutex();
   private operationId_ = 0;
-  // TODO: define mediaSourceEngine_
-  private mediaSourceEngine_: any = null;
+
+  private mediaSourceEngine_: MediaSourceEngine = null as any;
 
   private attachEventManager_ = new EventManager();
 
@@ -140,7 +141,7 @@ export class Player extends FakeEventTarget {
     }
   }
 
-  // TODO: implement initializeMediaSourceEngineInner_
+  // TODO(sanfeng): implement initializeMediaSourceEngineInner_
   initializeMediaSourceEngineInner_() {
     throw new Error('Method not implemented.');
   }
@@ -165,7 +166,7 @@ export class Player extends FakeEventTarget {
         this.video_ = null;
       }
       this.makeStateChangeEvent_('detach');
-      // TODO implement adManager_ release
+      // TODO(sanfeng): AdManager
       // if (this.adManager_ && !keepAdManager) {
       //   this.adManager_.release();
       // }
@@ -250,7 +251,7 @@ export class Player extends FakeEventTarget {
         await detectInterruption();
         await operation();
         await detectInterruption();
-        // TODO: implement
+        // TODO: PreloadManager
         // if (preloadManager && this.config_) {
         //   preloadManager.reconfigure(this.config_);
         // }

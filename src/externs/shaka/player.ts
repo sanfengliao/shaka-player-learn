@@ -935,7 +935,7 @@ export interface LcevcConfiguration {
   drawLogo: boolean;
 }
 
-// TODO(sanfeng): 离线播放
+// TODO(sanfeng): Offline
 export interface OfflineConfiguration {}
 
 export interface PlayerConfiguration {

@@ -26,8 +26,8 @@ type GetEventKey<T> = T extends {
   ? K
   : never;
 
-export class EventManager<T extends EventTarget> implements IReleasable {
-  bindingMap_: MultiMap<Binding_<T>> | null = new MultiMap();
+export class EventManager implements IReleasable {
+  bindingMap_: MultiMap<Binding_<EventTarget>> | null = new MultiMap();
   release(): void {
     this.removeAll();
     this.bindingMap_ = null;
@@ -44,7 +44,12 @@ export class EventManager<T extends EventTarget> implements IReleasable {
    *    call preventDefault(), which improves scrolling performance.
    * @export
    */
-  listen(target: T, type: GetEventKey<T>, listener: EventListener, options?: boolean | AddEventListenerOptions) {
+  listen<T extends EventTarget = EventTarget>(
+    target: T,
+    type: GetEventKey<T>,
+    listener: EventListener,
+    options?: boolean | AddEventListenerOptions
+  ) {
     if (!this.bindingMap_) {
       return;
     }
@@ -63,7 +68,12 @@ export class EventManager<T extends EventTarget> implements IReleasable {
    *    call preventDefault(), which improves scrolling performance.
    * @export
    */
-  listenOnce(target: T, type: GetEventKey<T>, listener: EventListener, options?: boolean | AddEventListenerOptions) {
+  listenOnce<T extends EventTarget = EventTarget>(
+    target: T,
+    type: GetEventKey<T>,
+    listener: EventListener,
+    options?: boolean | AddEventListenerOptions
+  ) {
     if (!this.bindingMap_) {
       return;
     }
@@ -82,7 +92,7 @@ export class EventManager<T extends EventTarget> implements IReleasable {
    * @export
    */
 
-  unlisten(target: T, type: GetEventKey<T>, listener?: EventListener) {
+  unlisten<T extends EventTarget = EventTarget>(target: T, type: GetEventKey<T>, listener?: EventListener) {
     if (!this.bindingMap_) {
       return;
     }

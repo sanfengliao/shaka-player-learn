@@ -1,6 +1,6 @@
 import { BufferedRange } from '../../externs/shaka';
 
-export class TimeRangeUtils {
+export class TimeRangesUtils {
   /**
    * Gets the first timestamp in the buffer.
    * @param b
@@ -86,7 +86,7 @@ export class TimeRangeUtils {
     // Therefore, we start at the end and add up all buffers until |time|.
 
     let result = 0;
-    for (const { start, end } of TimeRangeUtils.getBufferedInfo(b)) {
+    for (const { start, end } of TimeRangesUtils.getBufferedInfo(b)) {
       if (end > time) {
         result += end - Math.max(start, time);
       }
@@ -107,5 +107,45 @@ export class TimeRangeUtils {
     }
 
     return ret;
+  }
+
+  /**
+   *  This operation can be potentially EXPENSIVE and should only be done in
+   * debug builds for debugging purposes.
+   * @param oldRanges
+   * @param newRanges
+   * @returns  The last added range,
+   *   chronologically by presentation time.
+   */
+  static computeAddedRange(oldRanges: TimeRanges | null, newRanges: TimeRanges | null) {
+    if (!oldRanges || !oldRanges.length) {
+      return null;
+    }
+    if (!newRanges || !newRanges.length) {
+      return TimeRangesUtils.getBufferedInfo(newRanges).pop();
+    }
+    const newRangesReversed = TimeRangesUtils.getBufferedInfo(newRanges).reverse();
+    const oldRangesReversed = TimeRangesUtils.getBufferedInfo(oldRanges).reverse();
+    for (const newRange of newRangesReversed) {
+      let foundOverlap = false;
+
+      for (const oldRange of oldRangesReversed) {
+        if (oldRange.end >= newRange.start && oldRange.end <= newRange.end) {
+          foundOverlap = true;
+
+          // If the new range goes beyond the corresponding old one, the
+          // difference is newly-added.
+          if (newRange.end > oldRange.end) {
+            return { start: oldRange.end, end: newRange.end };
+          }
+        }
+      }
+
+      if (!foundOverlap) {
+        return newRange;
+      }
+    }
+
+    return null;
   }
 }

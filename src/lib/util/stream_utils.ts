@@ -418,7 +418,7 @@ export class StreamUtils {
       /* srcEquals= */ false,
       preferredKeySystems
     );
-    // TODO(sanfeng): 实现DRM
+    // TODO(sanfeng): DRMEngine
     let keySystem = null;
 
     manifest.variants = manifest.variants.filter((variant) => {
@@ -627,7 +627,7 @@ export class StreamUtils {
       return;
     }
     // Try to get preferred key systems first to avoid unneeded calls to CDM.
-    // TODO(sanfeng): 实现DRM
+    // TODO(sanfeng): DRMEngine
     for (const preferredKeySystem of preferredKeySystems) {
       let keySystemSatisfied = false;
       for (const variant of variants) {
@@ -955,7 +955,7 @@ export class StreamUtils {
       return [mediaDecodingConfigBatch];
     }
 
-    // TODO(sanfeng): 实现DRM
+    // TODO(sanfeng): DRMEngine
     const configs = [];
     // Get all the drm info so that we can avoid using nested loops when we
     // just need the drm info.

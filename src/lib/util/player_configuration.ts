@@ -54,7 +54,7 @@ export class PlayerConfiguration {
       }
     }
 
-    // TODO(sanfeng): 实现DRM
+    // TODO(sanfeng): DRMEngine
     const drm: DrmConfiguration = {
       retryParameters: NetworkingEngine.defaultRetryParameters(),
       // These will all be verified by special cases in mergeConfigObjects_():
