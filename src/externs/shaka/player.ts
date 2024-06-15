@@ -1439,8 +1439,8 @@ export interface MetadataFrame {
   key: string;
   data: ArrayBuffer | string | number;
   description: string;
-  mimeType?: string;
-  pictureType?: number;
+  mimeType: string | null;
+  pictureType: number | null;
 }
 
 export interface Resolution {
@@ -1788,10 +1788,21 @@ export interface StatsInfo {
   stateHistory: StateChange[];
 }
 
+/**
+ * ID3 metadata in format defined by
+ * https://id3.org/id3v2.3.0#Declared_ID3v2_frames
+ * The content of the field.
+ */
 export interface ID3Metadata {
   cueTime: number | null;
   data: Uint8Array;
   frames: MetadataFrame[];
   dts: number | null;
   pts: number | null;
+}
+
+export interface MetadataRawFrame {
+  type: string;
+  size: number;
+  data: Uint8Array;
 }
