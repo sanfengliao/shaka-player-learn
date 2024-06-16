@@ -111,8 +111,6 @@ export class ConfigUtils {
    *
    * @param {string} fieldName
    * @param {*} value
-   * @return {!Object}
-   * @export
    */
   static convertToConfigObject(fieldName: string, value: any) {
     const configObject: Record<string, any> = {};

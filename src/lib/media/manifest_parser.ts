@@ -1,5 +1,7 @@
 import { ManifestParserFactory } from '../../externs/shaka/manifest_parser';
+import { log } from '../debug/log';
 import { Deprecate } from '../deprecate/deprecate';
+import { ShakaError } from '../util/error';
 import { Platform } from '../util/platform';
 
 export class ManifestParser {
@@ -85,6 +87,34 @@ export class ManifestParser {
     }
 
     return support;
+  }
+
+  /**
+   * Get a factory that can create a manifest parser that should be able to
+   * parse the manifest at |uri|.
+   *
+   * @param {string} uri
+   * @param {?string} mimeType
+   * @return {shaka.extern.ManifestParser.Factory}
+   */
+  static getFactory(uri: string, mimeType: string | null = null) {
+    // Try using the MIME type we were given.
+    if (mimeType) {
+      const factory = ManifestParser.parsersByMime[mimeType.toLowerCase()];
+      if (factory) {
+        return factory;
+      }
+
+      log.warning('Could not determine manifest type using MIME type ', mimeType);
+    }
+
+    throw new ShakaError(
+      ShakaError.Severity.CRITICAL,
+      ShakaError.Category.MANIFEST,
+      ShakaError.Code.UNABLE_TO_GUESS_MANIFEST_TYPE,
+      uri,
+      mimeType
+    );
   }
 }
 

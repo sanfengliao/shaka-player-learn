@@ -18,6 +18,45 @@ import { AutoShowText } from '../config/auto_show_text';
 import { SimpleAbrManager } from '../abr/simple_abr_manager';
 
 export class PlayerConfiguration {
+  /**
+   * Merges the given configuration changes into the given destination.  This
+   * uses the default Player configurations as the template.
+   *
+   * @param {shaka.extern.PlayerConfiguration} destination
+   * @param {!Object} updates
+   * @param {shaka.extern.PlayerConfiguration=} template
+   * @return {boolean}
+   * @export
+   */
+  static mergeConfigObjects(
+    destination: IPlayerConfiguration,
+    updates: Record<string, any>,
+    template: IPlayerConfiguration | null = null
+  ) {
+    const overrides = {
+      '.drm.keySystemsMapping': '',
+      '.drm.servers': '',
+      '.drm.clearKeys': '',
+      '.drm.advanced': {
+        distinctiveIdentifierRequired: false,
+        persistentStateRequired: false,
+        videoRobustness: '',
+        audioRobustness: '',
+        sessionType: '',
+        serverCertificate: new Uint8Array(0),
+        serverCertificateUri: '',
+        individualizationServer: '',
+        headers: {},
+      },
+    };
+    return ConfigUtils.mergeConfigObjects(
+      destination,
+      updates,
+      template || PlayerConfiguration.createDefault(),
+      overrides,
+      ''
+    );
+  }
   static createDefault(): IPlayerConfiguration {
     // This is a relatively safe default in the absence of clues from the
     // browser.  For slower connections, the default estimate may be too high.

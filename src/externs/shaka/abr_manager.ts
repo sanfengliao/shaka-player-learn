@@ -47,16 +47,16 @@ export interface AbrManager {
   /**
    * Updates manager's variants collection.
    *
-   * @param {!Array.<!shaka.extern.Variant>} variants
+   * @param  variants
    * @exportDoc
    */
   setVariants(variants: Array<Variant>): void;
 
   /**
    * Chooses one variant to switch to.  Called by the Player.
-   * @param {boolean=} preferFastSwitching If not provided meant "avoid fast
+   * @param preferFastSwitching If not provided meant "avoid fast
    *                                       switching if possible".
-   * @return {shaka.extern.Variant}
+   * @return
    * @exportDoc
    */
   chooseVariant(preferFastSwitching: boolean): Variant;
@@ -81,12 +81,12 @@ export interface AbrManager {
    * Notifies the AbrManager that a segment has been downloaded (includes MP4
    * SIDX data, WebM Cues data, initialization segments, and media segments).
    *
-   * @param {number} deltaTimeMs The duration, in milliseconds, that the request
+   * @param deltaTimeMs The duration, in milliseconds, that the request
    *     took to complete.
-   * @param {number} numBytes The total number of bytes transferred.
-   * @param {boolean} allowSwitch Indicate if the segment is allowed to switch
+   * @param numBytes The total number of bytes transferred.
+   * @param allowSwitch Indicate if the segment is allowed to switch
    *     to another stream.
-   * @param {shaka.extern.Request=} request
+   * @param request
    *     A reference to the request
    * @exportDoc
    */
