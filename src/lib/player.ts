@@ -13,25 +13,25 @@ import { log } from './debug/log';
 import { Manifest } from '../externs/shaka/manifest';
 import { MediaSourceEngine, OnMetadata } from './media/media_source_engine';
 import { TextDisplayer } from '../externs/shaka/text';
+import { IDestroyable } from './util/i_destroyable';
+import { Playhead } from './media/playhead';
+import { PlayheadObserverManager } from './media/playhead_observer';
 
-export class Player extends FakeEventTarget {
+export class Player extends FakeEventTarget implements IDestroyable {
   static LoadMode = {
     DESTROYED: 0,
     NOT_LOADED: 1,
     MEDIA_SOURCE: 2,
     SRC_EQUALS: 3,
   } as const;
-  private video_: HTMLMediaElement = null as any;
-  private videoContainer_: HTMLElement | null = null;
-  private loadMode_: number = Player.LoadMode.NOT_LOADED;
+  private video_: HTMLMediaElement;
+  private videoContainer_: HTMLElement;
+  private loadMode_: number;
   private assetUri_?: string;
-  private mutex_ = new Mutex();
-  private operationId_ = 0;
+  private mutex_: Mutex;
+  private operationId_: number;
 
-  private mediaSourceEngine_: MediaSourceEngine = null as any;
-
-  private attachEventManager_ = new EventManager();
-
+  private attachEventManager_: EventManager;
   private preloadNextUrl_: PreloadManager | null = null;
   private startTime_: number | undefined;
   private fullyLoaded_ = false;
@@ -42,10 +42,87 @@ export class Player extends FakeEventTarget {
 
   private manifest_: Manifest;
 
+  private isTextVisible_: boolean;
+
+  private globalEventManager_: EventManager;
+  private loadEventManager_: EventManager;
+  private trickPlayEventManager_: EventManager;
+  private mediaSourceEngine_: MediaSourceEngine;
+
+  private playhead_: Playhead;
+
+  private playHeadObservers_: PlayheadObserverManager;
+
   constructor() {
     super();
+    this.loadMode_ = Player.LoadMode.NOT_LOADED;
 
     this.config_ = this.defaultConfig_();
+
+    this.video_ = null as any;
+    this.videoContainer_ = null as any;
+
+    /**
+     * Since we may not always have a text displayer created (e.g. before |load|
+     * is called), we need to track what text visibility SHOULD be so that we
+     * can ensure that when we create the text displayer. When we create our
+     * text displayer, we will use this to show (or not show) text as per the
+     * user's requests.
+     * TODO(sanfeng): TextEngine
+     */
+    this.isTextVisible_ = false;
+
+    /**
+     * For listeners scoped to the lifetime of the Player instance.
+     */
+    this.globalEventManager_ = new EventManager();
+
+    /**
+     * For listeners scoped to the lifetime of the media element attachment.
+     */
+    this.attachEventManager_ = new EventManager();
+
+    /**
+     * For listeners scoped to the lifetime of the loaded content.
+     */
+    this.loadEventManager_ = new EventManager();
+
+    /**
+     *  For listeners scoped to the lifetime of the loaded content.
+     */
+    this.trickPlayEventManager_ = new EventManager();
+
+    /**
+     * For listeners scoped to the lifetime of the ad manager.
+     * TODO(sanfeng): AdManager
+     */
+    // this.adManagerEventManager_ = new EventManager();
+
+    this.networkingEngine_ = null as any;
+    /**
+     * TODO(sanfeng): DrmEngine
+     */
+    // this.drmEngine_ = null as any;
+
+    this.mediaSourceEngine_ = null as any;
+
+    this.playhead_ = null as any;
+
+    /**
+     * Incremented whenever a top-level operation (load, attach, etc) is
+     * performed.
+     * Used to determine if a load operation has been interrupted.
+     */
+    this.operationId_ = 0;
+
+    this.mutex_ = new Mutex();
+
+    /**
+     * The playhead observers are used to monitor the position of the playhead
+     * and some other source of data (e.g. buffered content), and raise events.
+     *
+     */
+    this.playHeadObservers_ = null as any;
   }
 
   private defaultConfig_() {
@@ -54,11 +131,7 @@ export class Player extends FakeEventTarget {
     return config;
   }
 
-  /**
-   * @param {!shaka.util.Error} error
-   * @private
-   */
-  defaultStreamingFailureCallback_(error: ShakaError) {
+  private defaultStreamingFailureCallback_(error: ShakaError) {
     // For live streams, we retry streaming automatically for certain errors.
     // For VOD streams, all streaming failures are fatal.
     if (!this.isLive()) {

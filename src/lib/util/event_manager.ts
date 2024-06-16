@@ -8,6 +8,8 @@
  */
 
 import { asserts } from '../debug/asserts';
+import { FakeEvent } from './fake_event';
+import { FakeEventTarget } from './fake_event_target';
 import { IReleasable } from './i_releasable';
 import { MultiMap } from './multi_map';
 
@@ -49,7 +51,14 @@ export class EventManager implements IReleasable {
     type: GetEventKey<T>,
     listener: EventListener,
     options?: boolean | AddEventListenerOptions
-  ) {
+  ): void;
+  listen(
+    target: FakeEventTarget,
+    type: string,
+    listener: EventListener,
+    options?: boolean | AddEventListenerOptions
+  ): void;
+  listen(target: any, type: string, listener: EventListener, options?: boolean | AddEventListenerOptions) {
     if (!this.bindingMap_) {
       return;
     }
@@ -73,7 +82,14 @@ export class EventManager implements IReleasable {
     type: GetEventKey<T>,
     listener: EventListener,
     options?: boolean | AddEventListenerOptions
-  ) {
+  ): void;
+  listenOnce(
+    target: FakeEventTarget,
+    type: string,
+    listener: EventListener,
+    options?: boolean | AddEventListenerOptions
+  ): void;
+  listenOnce(target: any, type: string, listener: EventListener, options?: boolean | AddEventListenerOptions) {
     if (!this.bindingMap_) {
       return;
     }
@@ -89,10 +105,10 @@ export class EventManager implements IReleasable {
    * @param target The event target.
    * @param type The event type.
    * @param listener The event listener.
-   * @export
    */
-
-  unlisten<T extends EventTarget = EventTarget>(target: T, type: GetEventKey<T>, listener?: EventListener) {
+  unlisten<T extends EventTarget = EventTarget>(target: T, type: GetEventKey<T>, listener?: EventListener): void;
+  unlisten(target: FakeEventTarget, type: string, listener?: EventListener): void;
+  unlisten(target: any, type: string, listener?: EventListener) {
     if (!this.bindingMap_) {
       return;
     }

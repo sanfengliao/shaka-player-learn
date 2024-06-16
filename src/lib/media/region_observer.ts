@@ -108,7 +108,6 @@ export class RegionObserver extends FakeEventTarget implements IPlayheadObserver
 
     this.eventManager_ = new EventManager();
 
-    // @ts-expect-error
     this.eventManager_.listen(this.timeline_, 'regionremove', (event: any) => {
       const region = event['region'];
       this.oldPosition_.delete(region);

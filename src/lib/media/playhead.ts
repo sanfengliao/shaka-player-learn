@@ -27,7 +27,7 @@ import { VideoWrapper } from './videoWrapper';
  * and re-buffering.
  *
  */
-interface Playhead extends IReleasable {
+export interface Playhead extends IReleasable {
   /**
    * Called when the Player is ready to begin playback. Anything that depends
    * on setStartTime() should be done here, not in the constructor.
