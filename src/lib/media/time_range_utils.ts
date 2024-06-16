@@ -2,6 +2,28 @@ import { BufferedRange } from '../../externs/shaka';
 
 export class TimeRangesUtils {
   /**
+   *
+   * @param b Determines if the given time is inside a gap between buffered ranges.  If
+   * it is, this returns the index of the buffer that is *ahead* of the gap
+   * @param time
+   * @param threshold
+   */
+  static getGapIndex(b: TimeRanges, time: number, threshold: number) {
+    if (!b || !b.length) {
+      return null;
+    }
+    // Workaround Safari bug: https://bit.ly/2trx6O8
+    if (b.length == 1 && b.end(0) - b.start(0) < 1e-6) {
+      return null;
+    }
+
+    const idx = TimeRangesUtils.getBufferedInfo(b).findIndex((item, i, arr) => {
+      // currentBufferStartTime > time && lastBufferEndTime < time
+      return item.start > time && (i == 0 || arr[i - 1].end - time <= threshold);
+    });
+    return idx >= 0 ? idx : null;
+  }
+  /**
    * Gets the first timestamp in the buffer.
    * @param b
    * @returns The first buffered timestamp, in seconds, if |buffered|
