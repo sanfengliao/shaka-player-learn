@@ -42,11 +42,7 @@ export class FakeEventTarget implements IReleasable {
    * @override
    * @exportInterface
    */
-  addEventListener(
-    type: string,
-    listener: ListenerType,
-    options: AddEventListenerOptions | boolean = false
-  ) {
+  addEventListener(type: string, listener: ListenerType, options: AddEventListenerOptions | boolean = false) {
     if (!this.listeners_) {
       return;
     }
@@ -70,17 +66,13 @@ export class FakeEventTarget implements IReleasable {
    *
    * @param {string} type The event type for which you wish to remove a
    *   listener.
-   * @param {shaka.util.FakeEventTarget.ListenerType} listener The callback or
+   * @param listener The callback or
    *   listener object to remove.
    * @param {(EventListenerOptions|boolean)=} options Ignored.
    * @override
    * @exportInterface
    */
-  removeEventListener(
-    type: string,
-    listener: ListenerType,
-    options: EventListenerOptions | boolean = false
-  ) {
+  removeEventListener(type: string, listener: ListenerType, options: EventListenerOptions | boolean = false) {
     if (!this.listeners_) {
       return;
     }
@@ -98,10 +90,7 @@ export class FakeEventTarget implements IReleasable {
   dispatchEvent(event: FakeEvent) {
     // In many browsers, it is complex to overwrite properties of actual Events.
     // Here we expect only to dispatch FakeEvents, which are simpler.
-    asserts.assert(
-      event instanceof FakeEvent,
-      'FakeEventTarget can only dispatch FakeEvents!'
-    );
+    asserts.assert(event instanceof FakeEvent, 'FakeEventTarget can only dispatch FakeEvents!');
 
     if (!this.listeners_) {
       return true;
