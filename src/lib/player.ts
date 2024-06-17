@@ -57,6 +57,9 @@ import { DrmEngine } from './media/drm_engtine';
 import { TimeRangesUtils } from './media/time_range_utils';
 import { StreamUtils } from './util/stream_utils';
 import { Dom } from './util/dom_utils';
+import { MimeUtils } from './util/mime_utils';
+import { PublicPromise } from './util/public_promise';
+import { MediaReadyState } from './util/media_ready_state_utils';
 
 export class Player extends FakeEventTarget implements IDestroyable {
   static LoadMode = {
@@ -1066,7 +1069,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * @param startTimeOfLoad
    * @param mimeType
    */
-  private srcEqualsInner_(startTimeOfLoad: number, mimeType: string) {
+  private async srcEqualsInner_(startTimeOfLoad: number, mimeType: string) {
     this.makeStateChangeEvent_('src-equals');
 
     asserts.assert(this.video_, 'We should have a media element when loading.');
@@ -1082,6 +1085,202 @@ export class Player extends FakeEventTarget implements IDestroyable {
     this.cleanupOnUnload_.push(() => {
       unloaded = true;
     });
+
+    if (this.startTime_ !== null) {
+      this.playhead_.setStartTime(this.startTime_);
+    }
+
+    this.playRateController_ = new PlayRateController({
+      getRate: () => mediaElement.playbackRate,
+      getDefaultRate: () => mediaElement.defaultPlaybackRate,
+      setRate: (rate) => (mediaElement.playbackRate = rate),
+      movePlayhead: (delta) => {
+        mediaElement.currentTime += delta;
+      },
+    });
+
+    const rebufferThreshold = this.config_.streaming.rebufferingGoal;
+    this.startBufferManagement_(rebufferThreshold);
+
+    const updateStateHistory = () => this.updateStateHistory_();
+
+    this.loadEventManager_.listen(mediaElement, 'playing', updateStateHistory);
+    this.loadEventManager_.listen(mediaElement, 'pause', updateStateHistory);
+    this.loadEventManager_.listen(mediaElement, 'ended', updateStateHistory);
+    this.loadEventManager_.listen(mediaElement, 'ratechange', updateStateHistory);
+
+    // Wait for the 'loadedmetadata' event to measure load() latency, but only
+    // if preload is set in a way that would result in this event firing
+    // automatically.
+    // See https://github.com/shaka-project/shaka-player/issues/2483
+    if (mediaElement.preload !== 'none') {
+      this.loadEventManager_.listenOnce(mediaElement, 'loadedmetadata', () => {
+        const now = Date.now() / 1000;
+        const delta = now - startTimeOfLoad;
+        this.stats_.setLoadLatency(delta);
+      });
+    }
+    // The audio tracks are only available on Safari at the moment, but this
+    // drives the tracks API for Safari's native HLS. So when they change,
+    // fire the corresponding Shaka Player event.
+    // @ts-expect-error
+    if (mediaElement.audioTracks) {
+      this.loadEventManager_.listen(mediaElement.audioTracks, 'addtrack', () => this.onTracksChanged_());
+      this.loadEventManager_.listen(mediaElement.audioTracks, 'removetrack', () => this.onTracksChanged_());
+      this.loadEventManager_.listen(mediaElement.audioTracks, 'change', () => this.onTracksChanged_());
+    }
+
+    if (mediaElement.textTracks) {
+      this.loadEventManager_.listen(mediaElement.textTracks, 'addtrack', (e) => {
+        const trackEvent = e as TrackEvent;
+
+        if (trackEvent.track) {
+          const track = trackEvent.track;
+          asserts.assert(track instanceof TextTrack, 'Wrong track type!');
+          switch (track.kind) {
+            case 'metadata':
+              this.processTimedMetadataSrcEqls_(track);
+              break;
+
+            case 'chapters':
+              this.activateChaptersTrack_(track);
+              break;
+
+            default:
+              this.onTracksChanged_();
+              break;
+          }
+        }
+      });
+
+      this.loadEventManager_.listen(mediaElement.textTracks, 'removetrack', () => this.onTracksChanged_());
+      this.loadEventManager_.listen(mediaElement.textTracks, 'change', () => this.onTracksChanged_());
+    }
+
+    // By setting |src| we are done "loading" with src=. We don't need to set
+    // the current time because |playhead| will do that for us.
+    // TODO(sanfeng): CmcdManager
+    // mediaElement.src = this.cmcdManager_.appendSrcData(this.assetUri_, mimeType);
+    mediaElement.src = this.assetUri_!;
+
+    // Tizen 3 / WebOS won't load anything unless you call load() explicitly,
+    // no matter the value of the preload attribute.  This is harmful on some
+    // other platforms by triggering unbounded loading of media data, but is
+    // necessary here.
+    if (Platform.isTizen() || Platform.isWebOS()) {
+      mediaElement.load();
+    }
+
+    // In Safari using HLS won't load anything unless you call load()
+    // explicitly, no matter the value of the preload attribute.
+    // Note: this only happens when there are not autoplay.
+    if (
+      mediaElement.preload != 'none' &&
+      !mediaElement.autoplay &&
+      MimeUtils.isHlsType(mimeType) &&
+      Platform.safariVersion()
+    ) {
+      mediaElement.load();
+    }
+
+    // Set the load mode last so that we know that all our components are
+    // initialized.
+    this.loadMode_ = Player.LoadMode.SRC_EQUALS;
+
+    // The event doesn't mean as much for src= playback, since we don't
+    // control streaming.  But we should fire it in this path anyway since
+    // some applications may be expecting it as a life-cycle event.
+    this.dispatchEvent(Player.makeEvent_(FakeEvent.EventName.Streaming));
+
+    // The "load" Promise is resolved when we have loaded the metadata.  If we
+    // wait for the full data, that won't happen on Safari until the play
+    // button is hit.
+    const fullyLoaded = new PublicPromise();
+    MediaReadyState.waitForReadyState(mediaElement, HTMLMediaElement.HAVE_METADATA, this.loadEventManager_, () => {
+      this.playhead_.ready();
+      fullyLoaded.resolve();
+    });
+
+    MediaReadyState.waitForReadyState(
+      mediaElement,
+      HTMLMediaElement.HAVE_CURRENT_DATA,
+      this.loadEventManager_,
+      async () => {
+        this.setupPreferredAudioOnSrc_();
+
+        // Applying the text preference too soon can result in it being
+        // reverted.  Wait for native HLS to pick something first.
+        // TODO: TextEngine
+        // const textTracks = this.getFilteredTextTracks_();
+        // if (!textTracks.find((t) => t.mode != 'disabled')) {
+        //   await new Promise((resolve) => {
+        //     this.loadEventManager_.listenOnce(mediaElement.textTracks, 'change', resolve);
+
+        //     // We expect the event to fire because it does on Safari.
+        //     // But in case it doesn't on some other platform or future
+        //     // version, move on in 1 second no matter what.  This keeps the
+        //     // language settings from being completely ignored if something
+        //     // goes wrong.
+        //     new Timer(resolve).tickAfter(1);
+        //   });
+        // } else if (textTracks.length > 0) {
+        //   this.isTextVisible_ = true;
+        // }
+        // If we have moved on to another piece of content while waiting for
+        // the above event/timer, we should not change tracks here.
+        // if (unloaded) {
+        //   return;
+        // }
+
+        // this.setupPreferredTextOnSrc_();
+      }
+    );
+
+    if (mediaElement.error) {
+      // Already failed!
+      fullyLoaded.reject(this.videoErrorToShakaError_());
+    } else if (mediaElement.preload === 'none') {
+      log.alwaysWarn(
+        'With <video preload="none">, the browser will not load anything ' +
+          'until play() is called. We are unable to measure load latency ' +
+          'in a meaningful way, and we cannot provide track info yet. ' +
+          'Please do not use preload="none" with Shaka Player.'
+      );
+      // We can't wait for an event load loadedmetadata, since that will be
+      // blocked until a user interaction.  So resolve the Promise now.
+      fullyLoaded.resolve();
+    }
+
+    this.loadEventManager_.listenOnce(mediaElement, 'error', () => {
+      fullyLoaded.reject(this.videoErrorToShakaError_());
+    });
+
+    const timeout = new Promise((resolve, reject) => {
+      const timer = new Timer(reject);
+      timer.tickAfter(this.config_.streaming.loadTimeout);
+    });
+
+    await Promise.race([fullyLoaded, timeout]);
+    const isLive = this.isLive();
+    if (
+      (isLive && (this.config_.streaming.liveSync || this.config_.streaming.liveSyncPanicMode)) ||
+      this.config_.streaming.vodDynamicPlaybackRate
+    ) {
+      const onTimeUpdate = () => this.onTimeUpdate_();
+      this.loadEventManager_.listen(mediaElement, 'timeupdate', onTimeUpdate);
+    }
+
+    if (!isLive) {
+      const onVideoProgress = () => this.onVideoProgress_();
+      this.loadEventManager_.listen(mediaElement, 'timeupdate', onVideoProgress);
+      this.onVideoProgress_();
+    }
+    // TODO: AdManager
+    // if (this.adManager_) {
+
+    // }
+
+    this.fullyLoaded_ = true;
   }
 
   private async preloadInner_(
