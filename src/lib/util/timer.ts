@@ -29,7 +29,7 @@ export class Timer {
    *
    * @param {function()} onTick
    */
-  constructor(onTick: () => void) {
+  constructor(onTick: (...args: any[]) => void) {
     this.onTick_ = onTick;
 
     this.ticker_ = null;
@@ -38,7 +38,6 @@ export class Timer {
   /**
    * Have the timer call |onTick| now.
    *
-   * @return {!shaka.util.Timer}
    * @export
    */
   tickNow() {

@@ -34,6 +34,7 @@ export class Stats {
   private bytesDownloaded_: number = NaN;
   private stateHistory_: StateHistory = new StateHistory();
   private switchHistory_: SwitchHistory = new SwitchHistory();
+  private manifestSizeBytes_: number = NaN;
 
   /**
    * Update the ratio of dropped frames to total frames. This will replace the
@@ -180,18 +181,16 @@ export class Stats {
     }
   }
 
-  /**
-   * @return {!shaka.util.StateHistory}
-   */
   getStateHistory() {
     return this.stateHistory_;
   }
 
-  /**
-   * @return {!shaka.util.SwitchHistory}
-   */
   getSwitchHistory() {
     return this.switchHistory_;
+  }
+
+  setManifestSize(size: number) {
+    this.manifestSizeBytes_ = size;
   }
 
   /**
@@ -224,6 +223,7 @@ export class Stats {
       bytesDownloaded: this.bytesDownloaded_,
       stateHistory: this.stateHistory_.getCopy(),
       switchHistory: this.switchHistory_.getCopy(),
+      manifestSizeBytes: this.manifestSizeBytes_,
     };
   }
 
@@ -256,6 +256,7 @@ export class Stats {
       bytesDownloaded: NaN,
       switchHistory: [],
       stateHistory: [],
+      manifestSizeBytes: NaN,
     };
   }
 }

@@ -241,7 +241,7 @@ export class NetworkingEngine extends FakeEventTarget implements IDestroyable {
           type == NetworkingEngineRequestType.SEGMENT
         ) {
           const allowSwitch = this.allowSwitch_(context);
-          this.onProgressUpdated_(response.timeMs!, response.data.byteLength, allowSwitch);
+          this.onProgressUpdated_(response.timeMs!, response.data.byteLength, allowSwitch, null);
         }
         if (this.onResponse_) {
           this.onResponse_(type, response, context);
@@ -305,7 +305,20 @@ export class NetworkingEngine extends FakeEventTarget implements IDestroyable {
     });
   }
 
-  filterResponse_(
+  /**
+   * Copies all of the filters from this networking engine into another.
+
+   */
+  copyFiltersInto(other: NetworkingEngine) {
+    for (const filter of this.requestFilters_) {
+      other.requestFilters_.add(filter);
+    }
+    for (const filter of this.responseFilters_) {
+      other.responseFilters_.add(filter);
+    }
+  }
+
+  private filterResponse_(
     type: NetworkingEngineRequestType,
     responseAndGotProgress: ResponseAndGotProgress,
     context?: RequestContext
@@ -360,7 +373,7 @@ export class NetworkingEngine extends FakeEventTarget implements IDestroyable {
     return this.send_(type, request, context, backoff, index, null, numBytesRemainingObj);
   }
 
-  send_(
+  private send_(
     type: NetworkingEngineRequestType,
     request: Request,
     context: RequestContext | undefined,
@@ -800,7 +813,7 @@ export type OnProgressUpdated = (
   duration: number,
   transferredByteLength: number,
   allowSwitch: boolean,
-  request?: Request
+  request: Request | null
 ) => void;
 
 /**
@@ -823,11 +836,7 @@ export type OnDownloadFailed = (request: Request, error: ShakaError | null, code
  * A callback function called on every request
  * @export
  */
-export type OnRequest = (
-  requestType: NetworkingEngineRequestType,
-  request: Request,
-  context?: RequestContext
-) => Promise<any>;
+export type OnRequest = (requestType: NetworkingEngineRequestType, request: Request, context?: RequestContext) => void;
 
 /**
  *

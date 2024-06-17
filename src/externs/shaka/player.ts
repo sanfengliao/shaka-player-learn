@@ -1786,6 +1786,12 @@ export interface StatsInfo {
   switchHistory: TrackChoice[];
   // A history of the state changes.
   stateHistory: StateChange[];
+  /**
+   *  Size of the manifest payload. For DASH & MSS it will match the latest
+   *  downloaded manifest. For HLS, it will match the lastly downloaded playlist.
+   *  If nothing is loaded or in src= mode, NaN.
+   */
+  manifestSizeBytes: number;
 }
 
 /**

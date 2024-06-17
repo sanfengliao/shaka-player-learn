@@ -311,7 +311,7 @@ export class StreamUtils {
    * @param manifest
    * @param preferredKeySystems
    */
-  static async filterManifest(drmEngine: DrmEngine, manifest: Manifest, preferredKeySystems: string[] = []) {
+  static async filterManifest(drmEngine: DrmEngine | null, manifest: Manifest, preferredKeySystems: string[] = []) {
     await StreamUtils.filterManifestByMediaCapabilities(
       drmEngine,
       manifest,
@@ -406,7 +406,7 @@ export class StreamUtils {
   }
 
   static async filterManifestByMediaCapabilities(
-    drmEngine: DrmEngine,
+    drmEngine: DrmEngine | null,
     manifest: Manifest,
     usePersistentLicenses: boolean,
     preferredKeySystems: string[]

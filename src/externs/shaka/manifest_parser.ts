@@ -149,11 +149,11 @@ export interface ManifestParserPlayerInterface {
   /**
    *  Enable low latency streaming mode.
    */
-  enableLowLatencyMode(): boolean;
+  enableLowLatencyMode(): void;
   /**
    *  Update the presentation duration based on PresentationTimeline.
    */
-  updateDuration(): boolean;
+  updateDuration(): void;
 
   /**
    * Inform the player of new DRM info that needs to be processed for the given
@@ -175,6 +175,11 @@ export interface ManifestParserPlayerInterface {
    * Called when an metadata is found in the manifest.
    */
   onMetadata(a: string, b: number, c: number, d: MetadataFrame[]): void;
+  /**
+   * Called to temporarily disable a stream i.e. disabling all variant
+   *   containing said stream.
+   */
+  disableStream(stream: Stream): void;
 }
 
 export type ManifestParserFactory = () => IManifestParser;

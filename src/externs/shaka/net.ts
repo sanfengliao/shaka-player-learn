@@ -210,7 +210,7 @@ export type RequestFilter = (
   requestType: NetworkingEngineRequestType,
   request: Request,
   requestContext?: RequestContext
-) => Promise<any> | undefined;
+) => Promise<any> | void;
 
 /**
  * Defines a filter for responses.  This filter takes the response and modifies

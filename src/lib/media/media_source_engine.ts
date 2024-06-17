@@ -29,7 +29,7 @@ import { TimeRangesUtils } from './time_range_utils';
 
 const ContentType = ManifestParserUtils.ContentType;
 
-export type OnMetadata = (metadata: ID3Metadata[], timestampOffset: number, segmentEnd?: number) => void;
+export type OnMetadata = (metadata: ID3Metadata[], timestampOffset: number, segmentEnd: number | null) => void;
 
 /**
  * MediaSourceEngine wraps all operations on MediaSource and SourceBuffers.
@@ -81,7 +81,7 @@ export class MediaSourceEngine implements IDestroyable {
   private tsParser_ = null;
 
   constructor(video: HTMLMediaElement, textDisplayer: TextDisplayer | null, onMetadata?: OnMetadata) {
-    const onMetadataNoOp = (metadata: ID3Metadata[], timestampOffset: number, segmentEnd?: number) => {};
+    const onMetadataNoOp = (metadata: ID3Metadata[], timestampOffset: number, segmentEnd: number | null) => {};
     this.onMetadata_ = onMetadata || onMetadataNoOp;
     this.mediaSource_ = this.createMediaSource(this.mediaSourceOpen_);
     this.video_ = video;

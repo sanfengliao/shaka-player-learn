@@ -529,11 +529,10 @@ export class Platform {
     }
 
     Platform.cachedMediaElement_ =
-      /** @type {HTMLMediaElement} */ document.getElementsByTagName('video')[0] ||
-      document.getElementsByTagName('audio')[0];
+      document.getElementsByTagName('video')[0] || document.getElementsByTagName('audio')[0];
 
     if (!Platform.cachedMediaElement_) {
-      Platform.cachedMediaElement_ = /** @type {!HTMLMediaElement} */ document.createElement('video');
+      Platform.cachedMediaElement_ = document.createElement('video');
     }
 
     Platform.cacheExpirationTimer_.tickAfter(/* seconds= */ 1);

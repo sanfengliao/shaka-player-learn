@@ -119,7 +119,6 @@ export class SrcEqualsPlayhead implements Playhead {
     );
   }
 
-  /** @override */
   release() {
     if (this.eventManager_) {
       this.eventManager_.release();

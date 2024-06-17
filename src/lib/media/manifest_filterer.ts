@@ -14,8 +14,8 @@ import { DrmEngine } from './drm_engtine';
 export class ManifestFilterer {
   private config_: PlayerConfiguration;
   private maxHwRes_: Resolution;
-  private drmEngine_: DrmEngine;
-  constructor(config: PlayerConfiguration, maxHwRes: Resolution, drmEngine: DrmEngine) {
+  private drmEngine_: DrmEngine | null;
+  constructor(config: PlayerConfiguration, maxHwRes: Resolution, drmEngine: DrmEngine | null) {
     this.config_ = config;
     this.maxHwRes_ = maxHwRes;
     this.drmEngine_ = drmEngine;

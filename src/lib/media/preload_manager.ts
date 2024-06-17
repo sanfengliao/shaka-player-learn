@@ -30,8 +30,8 @@ import { StreamingEngine } from './stream_engine';
 
 export class PreloadManager extends FakeEventTarget implements IDestroyable {
   private assetUri_: string;
-  private mimeType_: string;
-  private startTime_: number;
+  private mimeType_: string | null;
+  private startTime_: number | null;
   private startTimeOfLoad_: number;
 
   private networkingEngine_: NetworkingEngine;
@@ -97,9 +97,9 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
 
   constructor(
     assetUri: string,
-    mimeType: string,
+    mimeType: string | null,
     startTimeOfLoad: number,
-    startTime: number,
+    startTime: number | null,
     playerInterface: PreloadManagerPlayerInterface
   ) {
     super();
@@ -522,8 +522,8 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
   /**
    * Waits for the loading to be finished (or to fail with an error).
    */
-  waitForFinish() {
-    return this.successPromise_;
+  waitForFinish(): Promise<void> {
+    return this.successPromise_ as any;
   }
 
   async destroy(): Promise<void> {

@@ -93,9 +93,9 @@ export class ManifestParser {
    * Get a factory that can create a manifest parser that should be able to
    * parse the manifest at |uri|.
    *
-   * @param {string} uri
-   * @param {?string} mimeType
-   * @return {shaka.extern.ManifestParser.Factory}
+   * @param  uri
+   * @param  mimeType
+   * @return
    */
   static getFactory(uri: string, mimeType: string | null = null) {
     // Try using the MIME type we were given.
@@ -115,6 +115,27 @@ export class ManifestParser {
       uri,
       mimeType
     );
+  }
+
+  /**
+   * Determines whether or not the MIME type is supported by our own
+   * manifest parsers on this platform.  This takes into account whether or not
+   * MediaSource is available, as well as which parsers are registered to the
+   * system.
+   *
+   * @param mimeType
+   */
+  static isSupported(mimeType: string) {
+    // Without MediaSource, our own parsers are useless.
+    if (!Platform.supportsMediaSource()) {
+      return false;
+    }
+
+    if (mimeType in ManifestParser.parsersByMime) {
+      return true;
+    }
+
+    return false;
   }
 }
 
