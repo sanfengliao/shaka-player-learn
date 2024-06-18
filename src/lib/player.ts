@@ -20,6 +20,7 @@ import {
   BufferedInfo,
   ID3Metadata,
   PlayerConfiguration as IPlayerConfiguration,
+  Interstitial,
   MediaQualityInfo,
   MetadataFrame,
   Resolution,
@@ -1126,8 +1127,11 @@ export class Player extends FakeEventTarget implements IDestroyable {
     // fire the corresponding Shaka Player event.
     // @ts-expect-error
     if (mediaElement.audioTracks) {
+      // @ts-expect-error
       this.loadEventManager_.listen(mediaElement.audioTracks, 'addtrack', () => this.onTracksChanged_());
+      // @ts-expect-error
       this.loadEventManager_.listen(mediaElement.audioTracks, 'removetrack', () => this.onTracksChanged_());
+      // @ts-expect-error
       this.loadEventManager_.listen(mediaElement.audioTracks, 'change', () => this.onTracksChanged_());
     }
 
@@ -1282,6 +1286,81 @@ export class Player extends FakeEventTarget implements IDestroyable {
     // }
 
     this.fullyLoaded_ = true;
+  }
+
+  /**
+   * We're looking for metadata tracks to process id3 tags. One of the uses is
+   * for ad info on LIVE streams
+   * @param track
+   */
+  private processTimedMetadataSrcEqls_(track: TextTrack) {
+    if (track.kind !== 'metadata') {
+      return;
+    }
+
+    // Hidden mode is required for the cuechange event to launch correctly
+    track.mode = 'hidden';
+
+    this.loadEventManager_.listen(track, 'cuechange', () => {
+      if (!track.activeCues) {
+        return;
+      }
+
+      const interstitials: Interstitial[] = [];
+      for (const cue of track.activeCues) {
+        // @ts-expect-error
+        this.dispatchMetadataEvent_(cue.startTime, cue.endTime, cue.type, cue.value);
+
+        // TODO(sanfeng): adManager
+
+        if (cue.type == 'com.apple.quicktime.HLS' && cue.startTime != null) {
+          let interstitial = interstitials.find((i) => {
+            return i.startTime == cue.startTime && i.endTime == cue.endTime;
+          });
+          if (!interstitial) {
+            interstitial = { startTime: cue.startTime, endTime: cue.endTime, values: [] };
+            interstitials.push(interstitial);
+          }
+          interstitial.values.push(cue.value);
+        }
+        // TODO(sanfeng): adManager
+      }
+    });
+
+    // In Safari the initial assignment does not always work, so we schedule
+    // this process to be repeated several times to ensure that it has been put
+    // in the correct mode.
+    const timer = new Timer(() => {
+      const textTracks = this.getMetadataTracks_();
+      for (const track of textTracks) {
+        track.mode = 'hidden';
+      }
+    })
+      .tickNow()
+      .tickEvery(0.5);
+
+    this.cleanupOnUnload_.push(() => {
+      timer.stop();
+    });
+  }
+
+  /**
+   * Get the TextTracks with the 'metadata' kind.
+   * @returns
+   */
+  private getMetadataTracks_() {
+    return Array.from(this.video_.textTracks).filter((track) => track.kind === 'metadata');
+  }
+
+  /**
+   * Dispatches a 'trackschanged' event.
+   * @private
+   */
+  private onTracksChanged_() {
+    // Delay the 'trackschanged' event so StreamingEngine has time to absorb the
+    // changes before the user tries to query it.
+    const event = Player.makeEvent_(FakeEvent.EventName.TracksChanged);
+    this.delayDispatchEvent_(event);
   }
 
   /**
@@ -2381,6 +2460,23 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * @param updateAbrManager
    */
   restoreDisabledVariants_(updateAbrManager = true) {}
+
+  /**
+   * Fire an event, but wait a little bit so that the immediate execution can
+   * complete before the event is handled.
+   *
+   * @param {!shaka.util.FakeEvent} event
+   * @private
+   */
+  private async delayDispatchEvent_(event: FakeEvent) {
+    // Wait until the next interpreter cycle.
+    await Promise.resolve();
+
+    // Only dispatch the event if we are still alive.
+    if (this.loadMode_ !== Player.LoadMode.DESTROYED) {
+      this.dispatchEvent(event);
+    }
+  }
 
   /**
    * Create an error for when we purposely interrupt a load operation.

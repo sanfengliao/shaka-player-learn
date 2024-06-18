@@ -1812,3 +1812,9 @@ export interface MetadataRawFrame {
   size: number;
   data: Uint8Array;
 }
+
+export interface Interstitial {
+  startTime: number;
+  endTime: number | null;
+  values: MetadataFrame[];
+}
