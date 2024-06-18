@@ -1100,7 +1100,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
     });
 
     const rebufferThreshold = this.config_.streaming.rebufferingGoal;
-    this.startBufferManagement_(rebufferThreshold);
+    this.startBufferManagement_(mediaElement, rebufferThreshold);
 
     const updateStateHistory = () => this.updateStateHistory_();
 
@@ -1281,6 +1281,146 @@ export class Player extends FakeEventTarget implements IDestroyable {
     // }
 
     this.fullyLoaded_ = true;
+  }
+
+  /**
+   * Initialize and start the buffering system (observer and timer) so that we
+   * can monitor our buffer lead during playback.
+   * @param mediaElement
+   * @param rebufferingGoal
+   */
+  private startBufferManagement_(mediaElement: HTMLMediaElement, rebufferingGoal: number) {
+    asserts.assert(!this.bufferObserver_, 'No buffering observer should exist before initialization.');
+
+    asserts.assert(!this.bufferPoller_, 'No buffer timer should exist before initialization.');
+    // Give dummy values, will be updated below.
+    this.bufferObserver_ = new BufferingObserver(1, 2);
+
+    //Force us back to a buffering state. This ensure everything is starting in
+    // the same state.
+    this.updateBufferingSettings_(rebufferingGoal);
+    this.updateBufferState_();
+    this.bufferPoller_ = new Timer(() => {
+      this.pollBufferState_();
+    }).tickEvery(0.25);
+
+    this.loadEventManager_.listen(mediaElement, 'waiting', () => {
+      this.pollBufferState_();
+    });
+    this.loadEventManager_.listen(mediaElement, 'stalled', () => {
+      this.pollBufferState_();
+    });
+    this.loadEventManager_.listen(mediaElement, 'canplaythrough', () => {
+      this.pollBufferState_();
+    });
+    this.loadEventManager_.listen(mediaElement, 'progress', () => {
+      this.pollBufferState_();
+    });
+  }
+  /**
+   * This method is called periodically to check what the buffering observer
+   * says so that we can update the rest of the buffering behaviours.
+   *
+   */
+  private pollBufferState_() {
+    asserts.assert(this.video_, 'Need a media element to update the buffering observer');
+
+    asserts.assert(this.bufferObserver_, 'Need a buffering observer to update');
+
+    let bufferedToEnd: boolean;
+
+    switch (this.loadMode_) {
+      case Player.LoadMode.SRC_EQUALS:
+        bufferedToEnd = this.isBufferedToEndSrc_();
+        break;
+
+      case Player.LoadMode.MEDIA_SOURCE:
+        bufferedToEnd = this.isBufferedToEndMS_();
+        break;
+      default:
+        bufferedToEnd = false;
+        break;
+    }
+
+    const bufferLead = TimeRangesUtils.bufferedAheadOf(this.video_.buffered, this.video_.currentTime);
+
+    const stateChanged = this.bufferObserver_.update(bufferLead, bufferedToEnd);
+
+    if (stateChanged) {
+      this.updateBufferState_();
+    }
+  }
+
+  /**
+   *  Assuming the player is playing content with media source, check if the
+   * player has buffered enough content to make it to the end of the
+   * presentation.
+   */
+  private isBufferedToEndMS_() {
+    asserts.assert(this.mediaSourceEngine_, 'We need a media source engine to get buffering information');
+    asserts.assert(this.manifest_, 'We need a manifest to get buffering information');
+    asserts.assert(this.video_, 'We need a video element to get buffering information');
+    // This is a strong guarantee that we are buffered to the end, because it
+    // means the playhead is already at that end.
+    if (this.video_.ended) {
+      return true;
+    }
+    // This means that MediaSource has buffered the final segment in all
+    // SourceBuffers and is no longer accepting additional segments.
+    if (this.mediaSourceEngine_.ended()) {
+      return true;
+    }
+
+    // Live streams are "buffered to the end" when they have buffered to the
+    // live edge or beyond (into the region covered by the presentation delay).
+    if (this.manifest_.presentationTimeline.isLive()) {
+      const liveEdge = this.manifest_.presentationTimeline.getSegmentAvailabilityEnd();
+      const bufferEnd = TimeRangesUtils.bufferEnd(this.video_.buffered);
+      if (bufferEnd !== null && bufferEnd >= liveEdge) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Assuming the player is playing content with src=, check if the player has
+   * buffered enough content to make it to the end of the presentation.
+   *
+   */
+  private isBufferedToEndSrc_() {
+    asserts.assert(this.video_, 'We need a video element to get buffering information');
+
+    // This is a strong guarantee that we are buffered to the end, because it
+    // means the playhead is already at that end.
+    if (this.video_.ended) {
+      return true;
+    }
+    // If we have buffered to the duration of the content, it means we will have
+    // enough content to buffer to the end of the presentation.
+
+    const bufferEnd = TimeRangesUtils.bufferEnd(this.video_.buffered);
+
+    // Because Safari's native HLS reports slightly inaccurate values for
+    // bufferEnd here, we use a fudge factor.  Without this, we can end up in a
+    // buffering state at the end of the stream.  See issue #2117.
+    const fudge = 1; // 1000 ms
+    return bufferEnd != null && bufferEnd >= this.video_.duration - fudge;
+  }
+
+  private updateBufferingSettings_(rebufferingGoal: number) {
+    // The threshold to transition back to satisfied when starving.
+    const starvingThreshold = rebufferingGoal;
+
+    // The threshold to transition into starving when satisfied.
+    // We use a "typical" threshold, unless the rebufferingGoal is unusually
+    // low.
+    // Then we force the value down to half the rebufferingGoal, since
+    // starvingThreshold must be strictly larger than satisfiedThreshold for the
+    // logic in BufferingObserver to work correctly.
+    const satisfiedThreshold = Math.min(Player.TYPICAL_BUFFERING_THRESHOLD_, rebufferingGoal / 2);
+
+    this.bufferObserver_.setThresholds(starvingThreshold, satisfiedThreshold);
   }
 
   private async preloadInner_(
@@ -2244,4 +2384,6 @@ export class Player extends FakeEventTarget implements IDestroyable {
   private static makeEvent_(type: string, data?: Map<string, Object>) {
     return new FakeEvent(type, data);
   }
+
+  private static TYPICAL_BUFFERING_THRESHOLD_ = 0.5;
 }

@@ -41,7 +41,7 @@ export class BufferingObserver {
     const oldState = this.previousState_;
 
     const newState =
-      bufferLead || bufferLead >= threshold ? BufferingObserverState.SATISFIED : BufferingObserverState.STARVING;
+      bufferedToEnd || bufferLead >= threshold ? BufferingObserverState.SATISFIED : BufferingObserverState.STARVING;
 
     // Save the new state now so that calls to |getState| from any callbacks
     // will be accurate.
