@@ -1103,11 +1103,12 @@ export class Player extends FakeEventTarget implements IDestroyable {
     this.startBufferManagement_(mediaElement, rebufferThreshold);
 
     const updateStateHistory = () => this.updateStateHistory_();
+    const onRateChange = () => this.onRateChange_();
 
     this.loadEventManager_.listen(mediaElement, 'playing', updateStateHistory);
     this.loadEventManager_.listen(mediaElement, 'pause', updateStateHistory);
     this.loadEventManager_.listen(mediaElement, 'ended', updateStateHistory);
-    this.loadEventManager_.listen(mediaElement, 'ratechange', updateStateHistory);
+    this.loadEventManager_.listen(mediaElement, 'ratechange', onRateChange);
 
     // Wait for the 'loadedmetadata' event to measure load() latency, but only
     // if preload is set in a way that would result in this event firing
@@ -1281,6 +1282,38 @@ export class Player extends FakeEventTarget implements IDestroyable {
     // }
 
     this.fullyLoaded_ = true;
+  }
+
+  /**
+   * A callback for when the playback rate changes. We need to watch the
+   * playback rate so that if the playback rate on the media element changes
+   * (that was not caused by our play rate controller) we can notify the
+   * controller so that it can stay in-sync with the change.
+   *
+   */
+  private onRateChange_() {
+    const newRate = this.video_.playbackRate;
+
+    // On Edge, when someone seeks using the native controls, it will set the
+    // playback rate to zero until they finish seeking, after which it will
+    // return the playback rate.
+    //
+    // If the playback rate changes while seeking, Edge will cache the playback
+    // rate and use it after seeking.
+    //
+    // https://github.com/shaka-project/shaka-player/issues/951
+    if (newRate === 0) {
+      return;
+    }
+
+    if (this.playRateController_) {
+      // The playback rate has changed. This could be us or someone else.
+      // If this was us, setting the rate again will be a no-op.
+      this.playRateController_.set(newRate);
+    }
+
+    const event = Player.makeEvent_(FakeEvent.EventName.RateChange);
+    this.dispatchEvent(event);
   }
 
   /**
