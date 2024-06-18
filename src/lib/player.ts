@@ -1288,6 +1288,29 @@ export class Player extends FakeEventTarget implements IDestroyable {
     this.fullyLoaded_ = true;
   }
 
+  private activateChaptersTrack_(track: TextTrack) {
+    if (track.kind !== 'chapters') {
+      return;
+    }
+
+    // Hidden mode is required for the cuechange event to launch correctly and
+    // get the cues and the activeCues
+    track.mode = 'hidden';
+
+    // In Safari the initial assignment does not always work, so we schedule
+    // this process to be repeated several times to ensure that it has been put
+    // in the correct mode.
+    const timer = new Timer(() => {
+      track.mode = 'hidden';
+    })
+      .tickNow()
+      .tickAfter(0.5);
+
+    this.cleanupOnUnload_.push(() => {
+      timer.stop();
+    });
+  }
+
   /**
    * We're looking for metadata tracks to process id3 tags. One of the uses is
    * for ad info on LIVE streams
