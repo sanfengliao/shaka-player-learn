@@ -181,7 +181,7 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
     this.parserFactory_;
   }
 
-  getCurrentAdpatationSetCriteria() {
+  getCurrentAdaptationSetCriteria() {
     return this.currentAdaptationSetCriteria_;
   }
 

@@ -1029,7 +1029,6 @@ export class Player extends FakeEventTarget implements IDestroyable {
 
       // Now, if there is no preload manager, that means that this is a src=
       // asset.
-      const shouldUseSrcEquals = !preloadManager;
 
       const startTimeOfLoad = preloadManager ? preloadManager.getStartTimeOfLoad() : Date.now() / 1000;
 
@@ -1039,7 +1038,8 @@ export class Player extends FakeEventTarget implements IDestroyable {
 
       this.assetUri_ = assetUri;
       this.mimeType_ = mimeType || null;
-      if (shouldUseSrcEquals) {
+
+      if (!preloadManager) {
         // TODO(sanfeng): DRMEngine
         // await mutexWrapOperation(async () => {}, 'initializeSrcEqualsDrmInner_');
 
@@ -1048,7 +1048,90 @@ export class Player extends FakeEventTarget implements IDestroyable {
 
           await this.srcEqualsInner_(startTimeOfLoad, mimeType!);
         }, 'srcEqualsInner_');
+      } else {
+        if (!this.mediaSourceEngine_) {
+          await mutexWrapOperation(async () => {
+            await this.initializeMediaSourceEngineInner_();
+          }, 'initializeMediaSourceEngineInner_');
+        }
+
+        // Wait for the preload manager to do all of the loading it can do.
+        await mutexWrapOperation(async () => {
+          preloadManager!.waitForFinish();
+        }, 'waitForFinish');
+
+        // Get manifest and associated values from preloader
+
+        this.config_ = preloadManager.getConfiguration();
+        this.manifestFilterer_ = preloadManager.getManifestFilterer();
+        this.manifest_ = preloadManager.getManifest()!;
+        this.parserFactory_ = preloadManager.getParserFactory()!;
+        this.parser_ = preloadManager.getParser()!;
+        this.regionTimeline_ = preloadManager.getRegionTimeline();
+        this.qualityObserver_ = preloadManager.getQualityObserver()!;
+
+        const currentAdaptationSetCriteria = preloadManager.getCurrentAdaptationSetCriteria();
+
+        if (currentAdaptationSetCriteria) {
+          this.currentAdaptationSetCriteria_ = currentAdaptationSetCriteria;
+        }
+
+        if (wasPreloaded && this.video_ && this.video_.nodeName.toLocaleLowerCase() === 'audio') {
+          // Filter the variants to be audio-only after the fact.
+          // As, when preloading, we don't know if we are going to be attached
+          // to a video or audio element when we load, we have to do the auto
+          // audio-only filtering here, post-facto.
+          this.makeManifestAudioOnly_();
+          // And continue to do so in the future.
+          this.configure('manifest.disableVideo', true);
+        }
+
+        // TODO: DrmEngine
+
+        // Also get the ABR manager, which has special logic related to being
+        // received.
+        const abrManagerFactory = preloadManager.getAbrManagerFactory();
+        if (abrManagerFactory) {
+          if (!this.abrManagerFactory_ || this.abrManagerFactory_ !== abrManagerFactory) {
+            this.abrManager_ = preloadManager.receiveAbrManager();
+            this.abrManagerFactory_ = preloadManager.getAbrManagerFactory() as any;
+            if (typeof this.abrManager_.setMediaElement != 'function') {
+              Deprecate.deprecateFeature(
+                5,
+                'AbrManager w/o setMediaElement',
+                'Please use an AbrManager with setMediaElement function.'
+              );
+              this.abrManager_.setMediaElement = () => {};
+            }
+            if (typeof this.abrManager_.setCmsdManager != 'function') {
+              Deprecate.deprecateFeature(
+                5,
+                'AbrManager w/o setCmsdManager',
+                'Please use an AbrManager with setCmsdManager function.'
+              );
+              this.abrManager_.setCmsdManager = () => {};
+            }
+            if (typeof this.abrManager_.trySuggestStreams != 'function') {
+              Deprecate.deprecateFeature(
+                5,
+                'AbrManager w/o trySuggestStreams',
+                'Please use an AbrManager with trySuggestStreams function.'
+              );
+              this.abrManager_.trySuggestStreams = () => {};
+            }
+          }
+        }
+
+        // Load the asset.
+        const segmentPrefetchById = preloadManager.receiveSegmentPrefetchesById();
+        const prefetchedVariant = preloadManager.getPrefetchedVariant();
+        await mutexWrapOperation(async () => {
+          await this.loadInner_(startTimeOfLoad, prefetchedVariant, segmentPrefetchById);
+        }, 'loadInner_');
+        preloadManager.stopQueuingLatePhaseQueuedOperations();
       }
+
+      this.dispatchEvent(Player.makeEvent_(FakeEvent.EventName.Loaded));
     } catch (error: any) {
       if (error.code === ShakaError.Code.LOAD_INTERRUPTED) {
         await this.unload(false);
