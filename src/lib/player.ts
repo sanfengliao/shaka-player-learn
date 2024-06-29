@@ -28,7 +28,7 @@ import {
 } from '../externs/shaka/player';
 import { PlayerConfiguration } from './util/player_configuration';
 import { log } from './debug/log';
-import { Manifest, Stream } from '../externs/shaka/manifest';
+import { Manifest, Stream, Variant } from '../externs/shaka/manifest';
 import { MediaSourceEngine, OnMetadata } from './media/media_source_engine';
 import { TextDisplayer } from '../externs/shaka/text';
 import { IDestroyable } from './util/i_destroyable';
@@ -61,6 +61,8 @@ import { Dom } from './util/dom_utils';
 import { MimeUtils } from './util/mime_utils';
 import { PublicPromise } from './util/public_promise';
 import { MediaReadyState } from './util/media_ready_state_utils';
+import { SegmentPrefetch } from './media/segment_prefetch';
+import { PresentationTimeline } from './media/presentation_timeline';
 
 export class Player extends FakeEventTarget implements IDestroyable {
   static LoadMode = {
@@ -490,6 +492,64 @@ export class Player extends FakeEventTarget implements IDestroyable {
     } finally {
       this.mutex_.release();
     }
+  }
+
+  /**
+   * Set a factory to create an ad manager during player construction time.
+   * This method needs to be called bafore instantiating the Player class.
+   *
+   * TODO(sanfeng): adManager
+   * @export
+   */
+  // static setAdManagerFactory(factory) {
+  //   shaka.Player.adManagerFactory_ = factory;
+  // }
+
+  /**
+   * Return whether the browser provides basic support.  If this returns false,
+   * Shaka Player cannot be used at all.  In this case, do not construct a
+   * Player instance and do not use the library.
+   *
+   * @return {boolean}
+   * @export
+   */
+  static isBrowserSupported() {
+    if (!window.Promise) {
+      log.alwaysWarn('A Promise implementation or polyfill is required');
+    }
+
+    // Basic features needed for the library to be usable.
+    const basicSupport = !!window.Promise && !!window.Uint8Array && !!Array.prototype.forEach;
+    if (!basicSupport) {
+      return false;
+    }
+
+    // We do not support IE
+    if (Platform.isIE()) {
+      return false;
+    }
+
+    const safariVersion = Platform.safariVersion();
+    if (safariVersion && safariVersion < 9) {
+      return false;
+    }
+
+    // DRM support is not strictly necessary, but the APIs at least need to be
+    // there.  Our no-op DRM polyfill should handle that.
+    // TODO(#1017): Consider making even DrmEngine optional.
+    // const drmSupport = DrmEngine.isBrowserSupported();
+    // if (!drmSupport) {
+    //   return false;
+    // }
+
+    // If we have MediaSource (MSE) support, we should be able to use Shaka.
+    if (Platform.supportsMediaSource()) {
+      return true;
+    }
+
+    // If we don't have MSE, we _may_ be able to use Shaka.  Look for native HLS
+    // support, and call this platform usable if we have it.
+    return Platform.supportsMediaType('application/x-mpegurl');
   }
 
   async initializeMediaSourceEngineInner_() {
@@ -1094,7 +1154,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
         if (abrManagerFactory) {
           if (!this.abrManagerFactory_ || this.abrManagerFactory_ !== abrManagerFactory) {
             this.abrManager_ = preloadManager.receiveAbrManager();
-            this.abrManagerFactory_ = preloadManager.getAbrManagerFactory() as any;
+            this.abrManagerFactory_ = preloadManager.getAbrManagerFactory()!;
             if (typeof this.abrManager_.setMediaElement != 'function') {
               Deprecate.deprecateFeature(
                 5,
@@ -1144,6 +1204,286 @@ export class Player extends FakeEventTarget implements IDestroyable {
         await preloadManager.destroy();
       }
       this.preloadNextUrl_ = null;
+    }
+  }
+
+  /**
+   * Starts loading the content described by the parsed manifest.
+   * @param startTimeOfLoad
+   * @param prefetchedVariant
+   * @param segmentPrefetchById
+   */
+  private async loadInner_(
+    startTimeOfLoad: number,
+    prefetchedVariant: Variant | null,
+    segmentPrefetchById: Map<number, SegmentPrefetch>
+  ) {
+    asserts.assert(this.video_, 'We should have a media element by now.');
+    asserts.assert(this.manifest_, 'The manifest should already be parsed.');
+    asserts.assert(this.assetUri_, 'We should have an asset uri by now.');
+    asserts.assert(this.abrManager_, 'We should have an abr manager by now.');
+
+    this.makeStateChangeEvent_('load');
+    const mediaElement = this.video_;
+
+    this.playRateController_ = new PlayRateController({
+      getDefaultRate: () => {
+        return mediaElement.defaultPlaybackRate;
+      },
+      getRate: () => mediaElement.playbackRate,
+      setRate: (rate) => {
+        mediaElement.playbackRate = rate;
+      },
+      movePlayhead: (delta) => (mediaElement.currentTime += delta),
+    });
+
+    const updateStateHistory = () => this.updateStateHistory_();
+    const onRateChange = () => this.onRateChange_();
+    this.loadEventManager_.listen(mediaElement, 'play', updateStateHistory);
+    this.loadEventManager_.listen(mediaElement, 'pause', updateStateHistory);
+    this.loadEventManager_.listen(mediaElement, 'ended', updateStateHistory);
+    this.loadEventManager_.listen(mediaElement, 'ratechange', onRateChange);
+
+    this.currentTextLanguage_ = this.config_.preferredTextLanguage;
+    this.currentTextRole_ = this.config_.preferredTextRole;
+    this.currentTextForced_ = this.config_.preferForcedSubs;
+    Player.applyPlayRange_(this.manifest_.presentationTimeline, this.config_.playRangeStart, this.config_.playRangeEnd);
+    this.abrManager_.init((variant, clearBuffer, safeMargin) => {
+      return this.switch_(variant, clearBuffer, safeMargin);
+    });
+
+    this.abrManager_.setMediaElement(mediaElement);
+
+    // TODO: CmsdManager
+    // this.abrManager_.setCmsdManager(this.cmsdManager_);
+
+    this.streamingEngine_ = this.createStreamingEngine();
+    this.streamingEngine_.configure(this.config_.streaming);
+
+    // Set the load mode to "loaded with media source" as late as possible so
+    // that public methods won't try to access internal components until
+    // they're all initialized. We MUST switch to loaded before calling
+    // "streaming" so that they can access internal information.
+    this.loadMode_ = Player.LoadMode.MEDIA_SOURCE;
+
+    if (mediaElement.textTracks) {
+      this.loadEventManager_.listen(mediaElement.textTracks, 'addtrack', (e) => {
+        const trackEvent = e as TrackEvent;
+        if (trackEvent.track) {
+          const track = trackEvent.track;
+          asserts.assert(track instanceof TextTrack, 'Wrong track type!');
+
+          switch (track.kind) {
+            case 'chapters':
+              this.activateChaptersTrack_(track);
+              break;
+          }
+        }
+      });
+    }
+
+    // The event must be fired after we filter by restrictions but before the
+    // active stream is picked to allow those listening for the "streaming"
+    // event to make changes before streaming starts.
+    this.dispatchEvent(Player.makeEvent_(FakeEvent.EventName.Streaming));
+
+    // Pick the initial streams to play.
+    // Unless the user has already picked a variant, anyway, by calling
+    // selectVariantTrack before this loading stage.
+    let initialVariant = prefetchedVariant;
+    const activeVariant = this.streamingEngine_.getCurrentVariant();
+
+    if (!activeVariant && !initialVariant) {
+      initialVariant = this.chooseVariant_(/* initialSelection= */ true);
+      asserts.assert(initialVariant, 'Must choose an initial variant!');
+    }
+
+    // Lazy-load the stream, so we will have enough info to make the playhead.
+    const createSegmentIndexPromises = [];
+    const toLazyLoad = activeVariant || initialVariant!;
+    for (const stream of [toLazyLoad.video, toLazyLoad.audio]) {
+      if (stream && !stream.segmentIndex) {
+        createSegmentIndexPromises.push(stream.createSegmentIndex());
+      }
+    }
+
+    if (createSegmentIndexPromises.length > 0) {
+      await Promise.all(createSegmentIndexPromises);
+    }
+
+    if (this.parser_ && this.parser_.onInitialVariantChosen) {
+      this.parser_.onInitialVariantChosen(toLazyLoad);
+    }
+
+    Player.applyPlayRange_(this.manifest_.presentationTimeline, this.config_.playRangeStart, this.config_.playRangeEnd);
+
+    const setupPlayhead = (startTime: number) => {
+      this.playhead_ = this.createPlayhead(startTime);
+      this.playheadObservers_ = this.createPlayheadObserversForMSE_(startTime);
+
+      // We need to start the buffer management code near the end because it
+      // will set the initial buffering state and that depends on other
+      // components being initialized.
+      const rebufferThreshold = Math.max(this.manifest_.minBufferTime, this.config_.streaming.rebufferingGoal);
+      this.startBufferManagement_(mediaElement, rebufferThreshold);
+    };
+
+    if (!this.config_.streaming.startAtSegmentBoundary) {
+      setupPlayhead(this.startTime_!);
+    }
+
+    // Now we can switch to the initial variant.
+    if (!activeVariant) {
+      asserts.assert(initialVariant, 'Must have choosen an initial variant!');
+
+      // Now that we have initial streams, we may adjust the start time to
+      // align to a segment boundary.
+      if (this.config_.streaming.startAtSegmentBoundary) {
+        const timeline = this.manifest_.presentationTimeline;
+        let initialTime = this.startTime_ || this.video_.currentTime;
+        const seekRangeStart = timeline.getSeekRangeStart();
+        const seekRangeEnd = timeline.getSeekRangeEnd();
+        if (initialTime < seekRangeStart) {
+          initialTime = seekRangeStart;
+        } else if (initialTime > seekRangeEnd) {
+          initialTime = seekRangeEnd;
+        }
+        const startTime = await this.adjustStartTime_(initialVariant, initialTime);
+        setupPlayhead(startTime);
+      }
+
+      this.switchVariant_(initialVariant, /* fromAdaptation= */ true, /* clearBuffer= */ false, /* safeMargin= */ 0);
+    }
+
+    this.playhead_.ready();
+
+    // Decide if text should be shown automatically.
+    // similar to video/audio track, we would skip switch initial text track
+    // if user already pick text track (via selectTextTrack api)
+    // TODO(sanfeng): TextStream
+    // const activeTextTrack = this.getTextTracks().find((t) => t.active);
+
+    // if (!activeTextTrack) {
+    //   const initialTextStream = this.chooseTextStream_();
+
+    //   if (initialTextStream) {
+    //     this.addTextStreamToSwitchHistory_(initialTextStream, /* fromAdaptation= */ true);
+    //   }
+
+    //   if (initialVariant) {
+    //     this.setInitialTextState_(initialVariant, initialTextStream);
+    //   }
+
+    //   // Don't initialize with a text stream unless we should be streaming
+    //   // text.
+    //   if (initialTextStream && this.shouldStreamText_()) {
+    //     this.streamingEngine_.switchTextStream(initialTextStream);
+    //   }
+    // }
+
+    // Start streaming content. This will start the flow of content down to
+    // media source.
+    await this.streamingEngine_.start(segmentPrefetchById);
+
+    if (this.config_.abr.enabled) {
+      this.abrManager_.enable();
+      this.onAbrStatusChanged_();
+    }
+
+    // Dispatch a 'trackschanged' event now that all initial filtering is
+    // done.
+    this.onTracksChanged_();
+
+    // Now that we've filtered out variants that aren't compatible with the
+    // active one, update abr manager with filtered variants.
+    // NOTE: This may be unnecessary.  We've already chosen one codec in
+    // chooseCodecsAndFilterManifest_ before we started streaming.  But it
+    // doesn't hurt, and this will all change when we start using
+    // MediaCapabilities and codec switching.
+    // TODO(#1391): Re-evaluate with MediaCapabilities and codec switching.
+    this.updateAbrManagerVariants_();
+
+    const hasPrimary = this.manifest_.variants.some((v) => v.primary);
+    if (!this.config_.preferredAudioLanguage && !hasPrimary) {
+      log.warning('No preferred audio language set.  ' + 'We have chosen an arbitrary language initially');
+    }
+    const isLive = this.isLive();
+    if (
+      (isLive &&
+        (this.config_.streaming.liveSync ||
+          this.manifest_.serviceDescription ||
+          this.config_.streaming.liveSyncPanicMode)) ||
+      this.config_.streaming.vodDynamicPlaybackRate
+    ) {
+      const onTimeUpdate = () => this.onTimeUpdate_();
+      this.loadEventManager_.listen(mediaElement, 'timeupdate', onTimeUpdate);
+    }
+
+    if (!isLive) {
+      const onVideoProgress = () => this.onVideoProgress_();
+      this.loadEventManager_.listen(mediaElement, 'timeupdate', onVideoProgress);
+      this.onVideoProgress_();
+
+      if (this.manifest_.nextUrl) {
+        if (this.config_.streaming.preloadNextUrlWindow > 0) {
+          const onTimeUpdate = async () => {
+            const timeToEnd = this.video_.duration - this.video_.currentTime;
+            if (!isNaN(timeToEnd)) {
+              if (timeToEnd <= this.config_.streaming.preloadNextUrlWindow) {
+                this.loadEventManager_.unlisten(mediaElement, 'timeupdate', onTimeUpdate);
+                asserts.assert(this.manifest_.nextUrl, 'this.manifest_.nextUrl should be valid.');
+                this.preloadNextUrl_ = await this.preload(this.manifest_.nextUrl);
+              }
+            }
+          };
+          this.loadEventManager_.listen(mediaElement, 'timeupdate', onTimeUpdate);
+        }
+        this.loadEventManager_.listen(mediaElement, 'ended', () => {
+          this.load(this.preloadNextUrl_ || this.manifest_.nextUrl!);
+        });
+      }
+    }
+
+    // TODO(sanfeng): adMananger
+    // if (this.adManager_) {
+    //   this.adManager_.onManifestUpdated(isLive);
+    // }
+
+    this.fullyLoaded_ = true;
+
+    // Wait for the 'loadedmetadata' event to measure load() latency.
+    this.loadEventManager_.listenOnce(mediaElement, 'loadedmetadata', () => {
+      const now = Date.now() / 1000;
+      const delta = now - startTimeOfLoad;
+      this.stats_.setLoadLatency(delta);
+    });
+  }
+
+  /**
+   * Applies playRangeStart and playRangeEnd to the given timeline. This will
+   * only affect non-live content.
+   * @param timeline
+   * @param playRangeStart
+   * @param playRangeEnd
+   */
+  static applyPlayRange_(timeline: PresentationTimeline, playRangeStart: number, playRangeEnd: number) {
+    if (playRangeStart > 0) {
+      if (timeline.isLive()) {
+        log.warning('|playRangeStart| has been configured for live content. ' + 'Ignoring the setting.');
+      } else {
+        timeline.setUserSeekStart(playRangeStart);
+      }
+    }
+
+    // If the playback has been configured to end before the end of the
+    // presentation, update the duration unless it's live content.
+    const fullDuration = timeline.getDuration();
+    if (playRangeEnd < fullDuration) {
+      if (timeline.isLive()) {
+        log.warning('|playRangeEnd| has been configured for live content. ' + 'Ignoring the setting.');
+      } else {
+        timeline.setDuration(playRangeEnd);
+      }
     }
   }
 
@@ -1208,15 +1548,15 @@ export class Player extends FakeEventTarget implements IDestroyable {
     // The audio tracks are only available on Safari at the moment, but this
     // drives the tracks API for Safari's native HLS. So when they change,
     // fire the corresponding Shaka Player event.
-    // @ts-expect-error
-    if (mediaElement.audioTracks) {
-      // @ts-expect-error
-      this.loadEventManager_.listen(mediaElement.audioTracks, 'addtrack', () => this.onTracksChanged_());
-      // @ts-expect-error
-      this.loadEventManager_.listen(mediaElement.audioTracks, 'removetrack', () => this.onTracksChanged_());
-      // @ts-expect-error
-      this.loadEventManager_.listen(mediaElement.audioTracks, 'change', () => this.onTracksChanged_());
-    }
+    // 只有safari支持
+    // if (mediaElement.audioTracks) {
+    //   // @ts-expect-error
+    //   this.loadEventManager_.listen(mediaElement.audioTracks, 'addtrack', () => this.onTracksChanged_());
+    //   // @ts-expect-error
+    //   this.loadEventManager_.listen(mediaElement.audioTracks, 'removetrack', () => this.onTracksChanged_());
+    //   // @ts-expect-error
+    //   this.loadEventManager_.listen(mediaElement.audioTracks, 'change', () => this.onTracksChanged_());
+    // }
 
     if (mediaElement.textTracks) {
       this.loadEventManager_.listen(mediaElement.textTracks, 'addtrack', (e) => {
@@ -1392,6 +1732,44 @@ export class Player extends FakeEventTarget implements IDestroyable {
     this.cleanupOnUnload_.push(() => {
       timer.stop();
     });
+  }
+
+  /**
+   *  Sets the current audio language and current variant role to the selected
+   * language, role and channel count, and chooses a new variant if need be.
+   * If the player has not loaded any content, this will be a no-op.
+   * This method setup the preferred audio using src=..
+   */
+  private setupPreferredAudioOnSrc_() {
+    const preferredAudioLanguage = this.config_.preferredAudioLanguage;
+
+    // If the user has not selected a preference, the browser preference is
+    // left.
+    if (!preferredAudioLanguage) {
+      return;
+    }
+
+    const preferredVariantRole = this.config_.preferredVariantRole;
+
+    this.selectAudioLanguage(preferredAudioLanguage, preferredVariantRole);
+  }
+
+  /**
+   * Sets the current audio language and current variant role to the selected
+   * language, role and channel count, and chooses a new variant if need be.
+   * If the player has not loaded any content, this will be a no-op.
+   * @param language
+   * @param role
+   * @param channelsCount
+   * @param safeMargin
+   * @param codec
+   */
+  selectAudioLanguage(language: string, role: string | null, channelsCount = 0, safeMargin = 0, codec = '') {
+    if (this.manifest_ && this.playhead_) {
+      // TODO: Dash
+    } else if (this.video_ && this.video_.audioTracks) {
+      // 只有safari支持，还是算了
+    }
   }
 
   /**
