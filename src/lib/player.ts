@@ -1420,11 +1420,11 @@ export class Player extends FakeEventTarget implements IDestroyable {
         } else if (initialTime > seekRangeEnd) {
           initialTime = seekRangeEnd;
         }
-        const startTime = await this.adjustStartTime_(initialVariant, initialTime);
+        const startTime = await this.adjustStartTime_(initialVariant!, initialTime);
         setupPlayhead(startTime);
       }
 
-      this.switchVariant_(initialVariant, /* fromAdaptation= */ true, /* clearBuffer= */ false, /* safeMargin= */ 0);
+      this.switchVariant_(initialVariant!, /* fromAdaptation= */ true, /* clearBuffer= */ false, /* safeMargin= */ 0);
     }
 
     this.playhead_.ready();
@@ -1529,6 +1529,103 @@ export class Player extends FakeEventTarget implements IDestroyable {
       const delta = now - startTimeOfLoad;
       this.stats_.setLoadLatency(delta);
     });
+  }
+
+  /**
+   * @param initialVariant
+   * @param time
+   * @return
+   */
+  private async adjustStartTime_(initialVariant: Variant, time: number) {
+    const activeAudio = initialVariant.audio;
+
+    const activeVideo = initialVariant.video;
+
+    const getAdjustedTime = async (stream: Stream | null, time: number) => {
+      if (!stream) {
+        return null;
+      }
+
+      await stream.createSegmentIndex();
+      const iter = stream.segmentIndex!.getIteratorForTime(time);
+      const ref = iter ? iter.next().value : null;
+      if (!ref) {
+        return null;
+      }
+
+      const refTime = ref.startTime;
+      asserts.assert(refTime <= time, 'Segment should start before target time!');
+      return refTime;
+    };
+
+    const audioStartTime = await getAdjustedTime(activeAudio, time);
+    const videoStartTime = await getAdjustedTime(activeVideo, time);
+
+    // If we have both video and audio times, pick the larger one.  If we picked
+    // the smaller one, that one will download an entire segment to buffer the
+    // difference.
+    if (videoStartTime != null && audioStartTime != null) {
+      return Math.max(videoStartTime, audioStartTime);
+    } else if (videoStartTime != null) {
+      return videoStartTime;
+    } else if (audioStartTime != null) {
+      return audioStartTime;
+    } else {
+      return time;
+    }
+  }
+
+  /**
+   * Callback for video progress events
+   *
+   * @private
+   */
+  private onVideoProgress_() {
+    if (!this.video_) {
+      return;
+    }
+    let hasNewCompletionPercent = false;
+    const completionRatio = this.video_.currentTime / this.video_.duration;
+    if (!isNaN(completionRatio)) {
+      const percent = Math.round(100 * completionRatio);
+      if (isNaN(this.completionPercent_)) {
+        this.completionPercent_ = percent;
+        hasNewCompletionPercent = true;
+      } else {
+        const newCompletionPercent = Math.max(this.completionPercent_, percent);
+        if (this.completionPercent_ != newCompletionPercent) {
+          this.completionPercent_ = newCompletionPercent;
+          hasNewCompletionPercent = true;
+        }
+      }
+    }
+    if (hasNewCompletionPercent) {
+      let event;
+      if (this.completionPercent_ == 0) {
+        event = Player.makeEvent_(FakeEvent.EventName.Started);
+      } else if (this.completionPercent_ == 25) {
+        event = Player.makeEvent_(FakeEvent.EventName.FirstQuartile);
+      } else if (this.completionPercent_ == 50) {
+        event = Player.makeEvent_(FakeEvent.EventName.Midpoint);
+      } else if (this.completionPercent_ == 75) {
+        event = Player.makeEvent_(FakeEvent.EventName.ThirdQuartile);
+      } else if (this.completionPercent_ == 100) {
+        event = Player.makeEvent_(FakeEvent.EventName.Complete);
+      }
+      if (event) {
+        this.dispatchEvent(event);
+      }
+    }
+  }
+
+  private onAbrStatusChanged_() {
+    // Restore disabled variants if abr get disabled
+    if (!this.config_.abr.enabled) {
+      this.restoreDisabledVariants_();
+    }
+
+    const data = new Map().set('newStatus', this.config_.abr.enabled);
+    this.delayDispatchEvent_(Player.makeEvent_(FakeEvent.EventName.AbrStatusChanged, data));
   }
 
   private switchVariant_(
