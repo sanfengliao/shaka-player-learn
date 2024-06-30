@@ -25,6 +25,7 @@ import {
   MetadataFrame,
   Resolution,
   TimelineRegionInfo,
+  Track,
 } from '../externs/shaka/player';
 import { PlayerConfiguration } from './util/player_configuration';
 import { log } from './debug/log';
@@ -1528,6 +1529,76 @@ export class Player extends FakeEventTarget implements IDestroyable {
       const delta = now - startTimeOfLoad;
       this.stats_.setLoadLatency(delta);
     });
+  }
+
+  private switchVariant_(
+    variant: Variant,
+    fromAdaptation: boolean,
+    clearBuffer: boolean,
+    safeMargin: number,
+    force = false
+  ) {
+    const currentVariant = this.streamingEngine_.getCurrentVariant();
+    if (variant === currentVariant) {
+      log.debug('Variant already selected.');
+      // If you want to clear the buffer, we force to reselect the same variant.
+      // We don't need to reset the timestampOffset since it's the same variant,
+      // so 'adaptation' isn't passed here.
+      if (clearBuffer) {
+        this.streamingEngine_.switchVariant(variant, clearBuffer, safeMargin, /* force= */ true);
+      }
+      return;
+    }
+
+    // Add entries to the history.
+    this.addVariantToSwitchHistory_(variant, fromAdaptation);
+    this.streamingEngine_.switchVariant(variant, clearBuffer, safeMargin, force, /* adaptation= */ fromAdaptation);
+    let oldTrack: Track | null = null;
+    if (currentVariant) {
+      oldTrack = StreamUtils.variantToTrack(currentVariant);
+    }
+    const newTrack = StreamUtils.variantToTrack(variant);
+
+    if (fromAdaptation) {
+      // Dispatch an 'adaptation' event
+      this.onAdaptation_(oldTrack, newTrack);
+    } else {
+      // Dispatch a 'variantchanged' event
+      this.onVariantChanged_(oldTrack, newTrack);
+    }
+  }
+
+  private addVariantToSwitchHistory_(variant: Variant, fromAdaptation: boolean) {
+    const switchHistory = this.stats_.getSwitchHistory();
+    switchHistory.updateCurrentVariant(variant, fromAdaptation);
+  }
+
+  /**
+   * Dispatches an 'adaptation' event.
+   * @param from
+   * @param to
+   */
+  private onAdaptation_(from: Track | null, to: Track) {
+    // Delay the 'adaptation' event so that StreamingEngine has time to absorb
+    // the changes before the user tries to query it.
+    const data = new Map().set('oldTrack', from).set('newTrack', to);
+
+    const event = Player.makeEvent_(FakeEvent.EventName.Adaptation, data);
+    this.delayDispatchEvent_(event);
+  }
+
+  /**
+   * Dispatches a 'variantchanged' event.
+   * @param from
+   * @param to
+   */
+  private onVariantChanged_(from: Track | null, to: Track) {
+    // Delay the 'variantchanged' event so StreamingEngine has time to absorb
+    // the changes before the user tries to query it.
+    const data = new Map().set('oldTrack', from).set('newTrack', to);
+
+    const event = Player.makeEvent_(FakeEvent.EventName.VariantChanged, data);
+    this.delayDispatchEvent_(event);
   }
 
   /**
