@@ -1746,7 +1746,9 @@ export class StreamingEngine implements IDestroyable {
               mediaState.stream,
               hasClosedCaptions
             );
-          } catch (error) {}
+          } catch (error) {
+            console.log(error);
+          }
         };
 
         this.playerInterface_.onInitSegmentAppended(reference.startTime, reference.initSegmentReference);
@@ -2453,7 +2455,7 @@ export interface StreamingEnginePlayerInterface {
    */
   onError: (error: ShakaError) => void;
   // Called when an event occurs that should be sent to the app.
-  onEvent: (event: Event | FakeEvent) => void;
+  onEvent: (event: FakeEvent) => void;
 
   // Called when an embedded 'emsg' box should trigger a manifest update.
   onManifestUpdate: () => void;

@@ -39,7 +39,7 @@ import { Timer } from './util/timer';
 import { BufferingObserver, BufferingObserverState } from './media/buffering_observer';
 import { RegionTimeline } from './media/region_timeline';
 import { QualityObserver } from './media/quality_observer';
-import { StreamingEngine } from './media/stream_engine';
+import { StreamingEngine, StreamingEnginePlayerInterface } from './media/stream_engine';
 import {
   IManifestParser,
   ManifestParserFactory,
@@ -1244,6 +1244,25 @@ export class Player extends FakeEventTarget implements IDestroyable {
   }
 
   /**
+   * Modifies the current manifest so that it is audio-only.
+   */
+  private makeManifestAudioOnly_() {
+    for (const variant of this.manifest_.variants) {
+      if (variant.video) {
+        variant.video.closeSegmentIndex?.();
+        variant.video = null;
+      }
+
+      if (variant.audio && variant.audio.bandwidth) {
+        variant.bandwidth = variant.audio.bandwidth;
+      } else {
+        variant.bandwidth = 0;
+      }
+    }
+    this.manifest_.variants.filter((v) => v.audio);
+  }
+
+  /**
    * Starts loading the content described by the parsed manifest.
    * @param startTimeOfLoad
    * @param prefetchedVariant
@@ -1327,25 +1346,28 @@ export class Player extends FakeEventTarget implements IDestroyable {
     // Unless the user has already picked a variant, anyway, by calling
     // selectVariantTrack before this loading stage.
     let initialVariant = prefetchedVariant;
-    const activeVariant = this.streamingEngine_.getCurrentVariant();
-
-    if (!activeVariant && !initialVariant) {
-      initialVariant = this.chooseVariant_(/* initialSelection= */ true);
-      asserts.assert(initialVariant, 'Must choose an initial variant!');
-    }
-
-    // Lazy-load the stream, so we will have enough info to make the playhead.
-    const createSegmentIndexPromises = [];
-    const toLazyLoad = activeVariant || initialVariant!;
-    for (const stream of [toLazyLoad.video, toLazyLoad.audio]) {
-      if (stream && !stream.segmentIndex) {
-        createSegmentIndexPromises.push(stream.createSegmentIndex());
+    let toLazyLoad: Variant;
+    let activeVariant;
+    do {
+      activeVariant = this.streamingEngine_.getCurrentVariant();
+      if (!activeVariant && !initialVariant) {
+        initialVariant = this.chooseVariant_(/* initialSelection= */ true);
+        asserts.assert(initialVariant, 'Must choose an initial variant!');
       }
-    }
 
-    if (createSegmentIndexPromises.length > 0) {
-      await Promise.all(createSegmentIndexPromises);
-    }
+      // Lazy-load the stream, so we will have enough info to make the playhead.
+      const createSegmentIndexPromises = [];
+      toLazyLoad = activeVariant || initialVariant!;
+      for (const stream of [toLazyLoad.video, toLazyLoad.audio]) {
+        if (stream && !stream.segmentIndex) {
+          createSegmentIndexPromises.push(stream.createSegmentIndex());
+        }
+      }
+      if (createSegmentIndexPromises.length > 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all(createSegmentIndexPromises);
+      }
+    } while (!toLazyLoad || toLazyLoad.disabledUntilTime != 0);
 
     if (this.parser_ && this.parser_.onInitialVariantChosen) {
       this.parser_.onInitialVariantChosen(toLazyLoad);
@@ -1493,6 +1515,150 @@ export class Player extends FakeEventTarget implements IDestroyable {
       const delta = now - startTimeOfLoad;
       this.stats_.setLoadLatency(delta);
     });
+  }
+
+  /**
+   * Chooses a variant from all possible variants while taking into account
+   * restrictions, preferences, and ABR.
+   *
+   * On error, this dispatches an error event and returns null.
+   * @param initialSelection
+   */
+  private chooseVariant_(initialSelection = false) {
+    if (this.updateAbrManagerVariants_()) {
+      return this.abrManager_.chooseVariant(initialSelection);
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Update AbrManager with variants while taking into account restrictions,
+   * preferences, and ABR.
+   *
+   * On error, this dispatches an error event and returns false.
+   *
+   * @return  True if successful.
+   */
+  private updateAbrManagerVariants_() {
+    try {
+      asserts.assert(this.manifest_, 'Manifest should exist by now!');
+      this.manifestFilterer_.checkRestrictedVariants(this.manifest_);
+    } catch (error: any) {
+      this.onError_(error);
+      return false;
+    }
+    const playableVariants = StreamUtils.getPlayableVariants(this.manifest_.variants);
+
+    // Update the abr manager with newly filtered variants.
+    const adaptationSet = this.currentAdaptationSetCriteria_.create(playableVariants);
+    this.abrManager_.setVariants(Array.from(adaptationSet.values()));
+    return true;
+  }
+
+  /**
+   * Creates a new instance of StreamingEngine.  This can be replaced by tests
+   * to create fake instances instead.
+   */
+  createStreamingEngine() {
+    asserts.assert(this.abrManager_ && this.mediaSourceEngine_ && this.manifest_, 'Must not be destroyed');
+    const playerInterface: StreamingEnginePlayerInterface = {
+      getPresentationTime: () => (this.playhead_ ? this.playhead_.getTime() : 0),
+      getBandwidthEstimate: () => this.abrManager_.getBandwidthEstimate(),
+      getPlaybackRate: () => this.getPlaybackRate(),
+      mediaSourceEngine: this.mediaSourceEngine_,
+      netEngine: this.networkingEngine_,
+      onError: (error) => this.onError_(error),
+      onEvent: (event) => this.dispatchEvent(event),
+      onManifestUpdate: () => this.onManifestUpdate_(),
+      onSegmentAppended: (reference, stream) => {
+        this.onSegmentAppended_(reference.startTime, reference.endTime, stream.type, stream.codecs.includes(','));
+        if (this.abrManager_ && stream.fastSwitching && reference.isPartial() && reference.isLastPartial()) {
+          this.abrManager_.trySuggestStreams();
+        }
+      },
+      onInitSegmentAppended: (position, initSegment) => {
+        const mediaQuality = initSegment.getMediaQuality();
+        if (mediaQuality && this.qualityObserver_) {
+          this.qualityObserver_.addMediaQualityChange(mediaQuality, position);
+        }
+      },
+      beforeAppendSegment: (contentType, segment): Promise<void> => {
+        // TODO(sanfeng): DrmEngine
+        // return this.drmEngine_.parseInbandPssh(contentType, segment);
+      },
+      onMetadata: (metadata, offset, endTime) => {
+        this.processTimedMetadataMediaSrc_(metadata, offset, endTime);
+      },
+      disableStream: (stream, time) => this.disableStream(stream, time),
+    };
+
+    return new StreamingEngine(this.manifest_, playerInterface);
+  }
+
+  /**
+   * Callback from StreamingEngine.
+   *
+   * @param start
+   * @param end
+   * @param contentType
+   * @param isMuxed
+   *
+   */
+  private onSegmentAppended_(start: number, end: number, contentType: string, isMuxed: boolean) {
+    // When we append a segment to media source (via streaming engine) we are
+    // changing what data we have buffered, so notify the playhead of the
+    // change.
+    if (this.playhead_) {
+      this.playhead_.notifyOfBufferingChange();
+      // Skip the initial buffer gap
+      const startTime = this.mediaSourceEngine_.bufferStart(contentType);
+      if (
+        !this.isLive() &&
+        // If not paused then GapJumpingController will handle this gap.
+        this.video_.paused &&
+        startTime != null &&
+        startTime > 0 &&
+        this.playhead_.getTime() < startTime
+      ) {
+        this.playhead_.setStartTime(startTime);
+      }
+    }
+    this.pollBufferState_();
+
+    // Dispatch an event for users to consume, too.
+    const data = new Map().set('start', start).set('end', end).set('contentType', contentType).set('isMuxed', isMuxed);
+    this.dispatchEvent(Player.makeEvent_(FakeEvent.EventName.SegmentAppended, data));
+  }
+
+  /**
+   * Callback from StreamingEngine.
+   *
+   */
+  private onManifestUpdate_() {
+    if (this.parser_ && this.parser_.update) {
+      this.parser_.update();
+    }
+  }
+
+  /**
+   * Get the playback rate of what is playing right now. If we are using trick
+   * play, this will return the trick play rate.
+   * If no content is playing, this will return 0.
+   * If content is buffering, this will return the expected playback rate once
+   * the video starts playing.
+   *
+   * <p>
+   * If the player has not loaded content, this will return a playback rate of
+   * 0.
+   *
+   * @returns
+   */
+  getPlaybackRate() {
+    if (!this.video_) {
+      return 0;
+    }
+    return this.playRateController_ ? this.playRateController_.getRealRate() : 1;
   }
 
   /**
