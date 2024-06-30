@@ -174,7 +174,7 @@ export class AbortableOperation<T> implements IAbortableOperation<T> {
       | ((param: T) => AbortableOperation<U>)
       | ((...params: any[]) => any),
     value: T,
-    newPromise: PublicPromise
+    newPromise: PublicPromise<any>
   ): () => Promise<any> {
     try {
       const ret = callback(value);

@@ -83,8 +83,8 @@ export class MediaSourceEngine implements IDestroyable {
   constructor(video: HTMLMediaElement, textDisplayer: TextDisplayer | null, onMetadata?: OnMetadata) {
     const onMetadataNoOp = (metadata: ID3Metadata[], timestampOffset: number, segmentEnd: number | null) => {};
     this.onMetadata_ = onMetadata || onMetadataNoOp;
-    this.mediaSource_ = this.createMediaSource(this.mediaSourceOpen_);
     this.video_ = video;
+    this.mediaSource_ = this.createMediaSource(this.mediaSourceOpen_);
     this.textDisplayer_ = textDisplayer;
   }
 

@@ -270,11 +270,6 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
     return this.segmentPrefetchById_;
   }
 
-  attachAbranager(abrManager: AbrManager, abrManagerFactory: AbrManagerFactory) {
-    this.abrManager_ = abrManager;
-    this.abrManagerFactory_ = abrManagerFactory;
-  }
-
   attachAdaptationSetCriteria(adaptationSetCriteria: AdaptationSetCriteria) {
     this.currentAdaptationSetCriteria_ = adaptationSetCriteria;
   }
@@ -283,6 +278,11 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
     this.manifest_ = manifest;
     this.parser_ = parser;
     this.parserFactory_ = parserFactory;
+  }
+
+  attachAbrManager(abrManager: AbrManager, abrFactory: AbrManagerFactory) {
+    this.abrManager_ = abrManager;
+    this.abrManagerFactory_ = abrFactory;
   }
   /**
    * Starts the process of loading the asset.
@@ -370,7 +370,7 @@ export class PreloadManager extends FakeEventTarget implements IDestroyable {
       this.parser_.configure(this.config_.manifest);
     }
 
-    const startTime = Date.now();
+    const startTime = Date.now() / 1000;
 
     this.makeStateChangeEvent_('manifest');
 

@@ -615,7 +615,7 @@ export class NetworkingEngine extends FakeEventTarget implements IDestroyable {
    * Contains the scheme plugins.
    *
    */
-  private static schemes_: Record<string, NetworkingEngineSchemeObject>;
+  private static schemes_: Record<string, NetworkingEngineSchemeObject> = {};
 
   /**
    * Registers a scheme plugin.  This plugin will handle all requests with the

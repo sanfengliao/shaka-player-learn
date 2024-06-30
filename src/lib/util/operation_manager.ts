@@ -12,11 +12,10 @@ export class OperationManager implements IDestroyable {
   operations_: IAbortableOperation[] = [];
 
   manage(operation: IAbortableOperation) {
-    this.operations_.push(
-      operation.finally(() => {
-        ArrayUtils.remove(this.operations_, operation);
-      })
-    );
+    operation.finally(() => {
+      ArrayUtils.remove(this.operations_, operation);
+    });
+    this.operations_.push(operation);
   }
 
   destroy(): Promise<any> {

@@ -22,9 +22,9 @@ export class ManifestParserUtils {
    * Note: This method is slow in SmartTVs and Consoles. It should only be
    * called when necessary.
    *
-   * @param {!Array.<string>} baseUris
-   * @param {!Array.<string>} relativeUris
-   * @return {!Array.<string>}
+   * @param baseUris
+   * @param relativeUris
+   * @return
    */
   static resolveUris(baseUris: string[], relativeUris: string[]) {
     if (relativeUris.length == 0) {
@@ -207,9 +207,7 @@ export class ManifestParserUtils {
    */
   static guessAllCodecsSafe(contentType: string, codecs: string[]) {
     const allCodecs = [];
-    const formats =
-      // @ts-ignore
-      ManifestParserUtils.CODEC_REGEXPS_BY_CONTENT_TYPE_[contentType];
+    const formats = ManifestParserUtils.CODEC_REGEXPS_BY_CONTENT_TYPE_[contentType];
     for (const format of formats) {
       for (const codec of codecs) {
         if (format.test(codec.trim())) {
@@ -293,10 +291,7 @@ export class ManifestParserUtils {
    */
   static TEXT_CODEC_REGEXPS_ = [/^vtt$/, /^wvtt/, /^stpp/];
 
-  /**
-   * @const {!Object.<string, !Array.<!RegExp>>}
-   */
-  static CODEC_REGEXPS_BY_CONTENT_TYPE_ = {
+  static CODEC_REGEXPS_BY_CONTENT_TYPE_: Record<string, RegExp[]> = {
     audio: ManifestParserUtils.AUDIO_CODEC_REGEXPS_,
     video: ManifestParserUtils.VIDEO_CODEC_REGEXPS_,
     text: ManifestParserUtils.TEXT_CODEC_REGEXPS_,

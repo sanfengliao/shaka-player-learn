@@ -575,7 +575,7 @@ export class SegmentTemplate {
    * @return
    * @private
    */
-  private static fromInheritance_(frame?: DashParserInheritanceFrame): XmlNode {
+  private static fromInheritance_(frame: DashParserInheritanceFrame | null): XmlNode {
     return frame!.segmentTemplate!;
   }
 }

@@ -510,8 +510,6 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * Shaka Player cannot be used at all.  In this case, do not construct a
    * Player instance and do not use the library.
    *
-   * @return {boolean}
-   * @export
    */
   static isBrowserSupported() {
     if (!window.Promise) {
@@ -537,6 +535,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
     // DRM support is not strictly necessary, but the APIs at least need to be
     // there.  Our no-op DRM polyfill should handle that.
     // TODO(#1017): Consider making even DrmEngine optional.
+    // TODO(sanfeng): DrmEngine
     // const drmSupport = DrmEngine.isBrowserSupported();
     // if (!drmSupport) {
     //   return false;
@@ -550,6 +549,43 @@ export class Player extends FakeEventTarget implements IDestroyable {
     // If we don't have MSE, we _may_ be able to use Shaka.  Look for native HLS
     // support, and call this platform usable if we have it.
     return Platform.supportsMediaType('application/x-mpegurl');
+  }
+
+  /**
+   * Probes the browser to determine what features are supported.  This makes a
+   * number of requests to EME/MSE/etc which may result in user prompts.  This
+   * should only be used for diagnostics.
+   *
+   * <p>
+   * NOTE: This may show a request to the user for permission.
+   *
+   * @see https://bit.ly/2ywccmH
+   */
+  static async probeSupport(promptsOkay = true) {
+    asserts.assert(Player.isBrowserSupported(), 'Must have basic support');
+    let drm = {};
+    // TODO(sanfeng): DrmEngine
+    // if (promptsOkay) {
+    //   drm = await shaka.media.DrmEngine.probeSupport();
+    // }
+    const manifest = ManifestParser.probeSupport();
+    const media = MediaSourceEngine.probeSupport();
+    const hardwareResolution = await Platform.detectMaxHardwareResolution();
+
+    /** @type {shaka.extern.SupportType} */
+    const ret = {
+      manifest,
+      media,
+      drm,
+      hardwareResolution,
+    };
+
+    const plugins = Player.supportPlugins_;
+    for (const name in plugins) {
+      ret[name] = plugins[name]();
+    }
+
+    return ret;
   }
 
   async initializeMediaSourceEngineInner_() {
@@ -1117,7 +1153,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
 
         // Wait for the preload manager to do all of the loading it can do.
         await mutexWrapOperation(async () => {
-          preloadManager!.waitForFinish();
+          await preloadManager!.waitForFinish();
         }, 'waitForFinish');
 
         // Get manifest and associated values from preloader
@@ -1457,6 +1493,94 @@ export class Player extends FakeEventTarget implements IDestroyable {
       const delta = now - startTimeOfLoad;
       this.stats_.setLoadLatency(delta);
     });
+  }
+
+  /**
+   * Provides a way to update the stream start position during the media loading
+   * process. Can for example be called from the <code>manifestparsed</code>
+   * event handler to update the start position based on information in the
+   * manifest.
+   */
+  updateStartTime(startTime: number) {
+    this.startTime_ = startTime;
+  }
+
+  /**
+   * Unloads the currently playing stream, if any, and returns a PreloadManager
+   * that contains the loaded manifest of that asset, if any.
+   * Allows for the asset to be re-loaded by this player faster, in the future.
+   * When in src= mode, this unloads but does not make a PreloadManager.
+   *
+   * @param initializeMediaSource
+   * @param keepAdManager
+   */
+  async unloadAndSavePreload(initializeMediaSource = true, keepAdManager = false): Promise<PreloadManager | null> {
+    const preloadManager = await this.savePreload_();
+    await this.unload(initializeMediaSource, keepAdManager);
+    return preloadManager;
+  }
+
+  /**
+   * Detach the player from the current media element, if any, and returns a
+   * PreloadManager that contains the loaded manifest of that asset, if any.
+   * Allows for the asset to be re-loaded by this player faster, in the future.
+   * When in src= mode, this detach but does not make a PreloadManager.
+   * Leaves the player in a state where it cannot play media, until it has been
+   * attached to something else.
+   *
+   * @param keepAdManager
+   * @param saveLivePosition
+   */
+  async detachAndSavePreload(keepAdManager = false, saveLivePosition = false): Promise<PreloadManager | null> {
+    const preloadManager = await this.savePreload_(saveLivePosition);
+    await this.detach(keepAdManager);
+    return preloadManager;
+  }
+
+  async savePreload_(saveLivePosition = false) {
+    let preloadManager = null;
+    if (this.manifest_ && this.parser_ && this.parserFactory_ && this.assetUri_) {
+      let startTime = this.video_.currentTime;
+      if (this.isLive() && !saveLivePosition) {
+        startTime = null as any;
+      }
+      // We have enough information to make a PreloadManager!
+      const startTimeOfLoad = Date.now() / 1000;
+      preloadManager = await this.makePreloadManager_(
+        this.assetUri_,
+        startTime,
+        this.mimeType_,
+        startTimeOfLoad,
+        /* allowPrefetch= */ true,
+        /* disableVideo= */ false,
+        /* allowMakeAbrManager= */ false
+      );
+      this.createdPreloadManagers_.push(preloadManager);
+      preloadManager.attachManifest(this.manifest_, this.parser_, this.parserFactory_);
+      preloadManager.attachAbrManager(this.abrManager_, this.abrManagerFactory_);
+      preloadManager.attachAdaptationSetCriteria(this.currentAdaptationSetCriteria_);
+      preloadManager.start();
+      // Null the manifest and manifestParser, so that they won't be shut down
+      // during unload and will continue to live inside the preloadManager.
+      this.manifest_ = null as any;
+      this.parser_ = null as any;
+      this.parserFactory_ = null as any;
+      // Null the abrManager and abrManagerFactory, so that they won't be shut
+      // down during unload and will continue to live inside the preloadManager.
+      this.abrManager_ = null as any;
+      this.abrManagerFactory_ = null as any;
+    }
+    return preloadManager;
+  }
+
+  attachAdaptationSetCriteria(adaptationSetCriteria: AdaptationSetCriteria) {
+    this.currentAdaptationSetCriteria_ = adaptationSetCriteria;
+  }
+
+  attachManifest(manifest: Manifest, parser: IManifestParser, parserFactory: ManifestParserFactory) {
+    this.manifest_ = manifest;
+    this.parser_ = parser;
+    this.parserFactory_ = parserFactory;
   }
 
   /**
@@ -2999,4 +3123,6 @@ export class Player extends FakeEventTarget implements IDestroyable {
   }
 
   private static TYPICAL_BUFFERING_THRESHOLD_ = 0.5;
+
+  private static supportPlugins_: Record<string, Function> = {};
 }

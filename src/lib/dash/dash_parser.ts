@@ -296,7 +296,7 @@ export class DashParser implements IManifestParser {
     const manifestPreprocessor = this.config_!.dash.manifestPreprocessor;
     const defaultManifestPreprocessor = PlayerConfiguration.defaultManifestPreprocessor;
 
-    if (manifestPreprocessor != defaultManifestPreprocessor) {
+    if (manifestPreprocessor !== defaultManifestPreprocessor) {
       Deprecate.deprecateFeature(
         5,
         'manifest.dash.manifestPreprocessor configuration',
@@ -331,6 +331,7 @@ export class DashParser implements IManifestParser {
       manifestPreprocessorTXml(mpd);
     }
 
+    // TODO(sanfeng): 搞定patch
     if (rootElement === 'Patch') {
       return this.processPatchManifest_(mpd);
     }
@@ -367,6 +368,8 @@ export class DashParser implements IManifestParser {
       this.contentSteeringManager_.clearPreviousLocations();
     }
 
+    // Get any Location elements.  This will update the manifest location and
+    // the base URI.
     let manifestBaseUris = [finalManifestUri];
     const locations: string[] = [];
 
@@ -2509,10 +2512,10 @@ export class DashParser implements IManifestParser {
   /**
    * Parses an EventStream element.
    *
-   * @param {number} periodStart
-   * @param {?number} periodDuration
-   * @param {!shaka.extern.xml.Node} elem
-   * @param {number} availabilityStart
+   * @param periodStart
+   * @param periodDuration
+   * @param elem
+   * @param availabilityStart
    * @private
    */
   parseEventStream_(periodStart: number, periodDuration: number | null, elem: XmlNode, availabilityStart: number) {
@@ -2802,7 +2805,8 @@ export interface DashParserStreamInfo {
   generateSegmentIndex: DashParserGenerateSegmentIndexFunction;
 }
 
-export type GetFrameNode = (frame?: DashParserInheritanceFrame) => XmlNode | undefined;
-
-ManifestParser.registerParserByMime('application/dash+xml', () => new DashParser());
-ManifestParser.registerParserByMime('video/vnd.mpeg.dash.mpd', () => new DashParser());
+export type GetFrameNode = (frame: DashParserInheritanceFrame | null) => XmlNode | undefined;
+export const registerDashParser = () => {
+  ManifestParser.registerParserByMime('application/dash+xml', () => new DashParser());
+  ManifestParser.registerParserByMime('video/vnd.mpeg.dash.mpd', () => new DashParser());
+};

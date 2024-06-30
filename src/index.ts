@@ -1,4 +1,4 @@
-import { Player } from './lib/player';
+import { Player } from './lib';
 import { polyfill } from './lib/polyfill';
 
 polyfill.installAll();

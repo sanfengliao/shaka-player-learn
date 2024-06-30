@@ -256,7 +256,7 @@ export class MpdUtils {
    */
   static parseSegmentInfo(
     context: DashParserContext,
-    callback: (representation?: DashParserInheritanceFrame) => XmlNode
+    callback: (representation: DashParserInheritanceFrame | null) => XmlNode
   ): MpdUtilsSegmentInfo {
     asserts.assert(callback(context.representation), 'There must be at least one element of the given type.');
     const timescaleStr = MpdUtils.inheritAttribute(context, callback, 'timescale');
@@ -315,10 +315,9 @@ export class MpdUtils {
 
   /**
    * Parses common attributes for Representation, AdaptationSet, and Period.
-   * @param {shaka.dash.DashParser.Context} context
-   * @param {function(?shaka.dash.DashParser.InheritanceFrame):
-   *    ?shaka.extern.xml.Node} callback
-   * @return {!Array.<!shaka.extern.xml.Node>}
+   * @param context
+   * @param  callback
+   * @return
    */
   static getNodes(context: DashParserContext, callback: GetFrameNode) {
     asserts.assert(callback(context.representation), 'There must be at least one element of the given type.');
@@ -356,13 +355,13 @@ export class MpdUtils {
    * It also strips the xlink properties off of the element,
    * even if the process fails.
    *
-   * @param {!shaka.extern.xml.Node} element
-   * @param {!shaka.extern.RetryParameters} retryParameters
-   * @param {boolean} failGracefully
-   * @param {string} baseUri
-   * @param {!shaka.net.NetworkingEngine} networkingEngine
-   * @param {number} linkDepth
-   * @return {!shaka.util.AbortableOperation.<!shaka.extern.xml.Node>}
+   * @param element
+   * @param retryParameters
+   * @param failGracefully
+   * @param baseUri
+   * @param networkingEngine
+   * @param linkDepth
+   * @return
    * @private
    */
   static handleXlinkInElement_(
@@ -449,13 +448,13 @@ export class MpdUtils {
    * Filter the contents of a node recursively, replacing xlink links
    * with their associated online data.
    *
-   * @param {!shaka.extern.xml.Node} element
-   * @param {!shaka.extern.RetryParameters} retryParameters
-   * @param {boolean} failGracefully
-   * @param {string} baseUri
-   * @param {!shaka.net.NetworkingEngine} networkingEngine
-   * @param {number=} linkDepth, default set to 0
-   * @return {!shaka.util.AbortableOperation.<!shaka.extern.xml.Node>}
+   * @param element
+   * @param retryParameters
+   * @param failGracefully
+   * @param baseUri
+   * @param networkingEngine
+   * @param linkDepth, default set to 0
+   * @return
    */
   static processXlinks(
     element: XmlNode,
@@ -501,14 +500,7 @@ export class MpdUtils {
 
         // Replace the child with its processed form.
         childOperations.push(
-          MpdUtils.processXlinks(
-            /** @type {!shaka.extern.xml.Node} */ child,
-            retryParameters,
-            failGracefully,
-            baseUri,
-            networkingEngine,
-            linkDepth
-          )
+          MpdUtils.processXlinks(child, retryParameters, failGracefully, baseUri, networkingEngine, linkDepth)
         );
       }
     }

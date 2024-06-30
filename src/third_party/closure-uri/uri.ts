@@ -1,3 +1,5 @@
+/* eslint-disable no-useless-escape */
+/* eslint-disable no-prototype-builtins */
 /**
  * This class contains setters and getters for the parts of the URI.
  * The <code>getXyz</code>/<code>setXyz</code> methods return the decoded part
@@ -94,45 +96,31 @@ export class Uri {
    * @override
    */
   toString() {
-    var out = [];
+    const out = [];
 
-    var scheme = this.getScheme();
+    const scheme = this.getScheme();
     if (scheme) {
-      out.push(
-        Uri.encodeSpecialChars_(
-          scheme,
-          Uri.reDisallowedInSchemeOrUserInfo_,
-          true
-        ),
-        ':'
-      );
+      out.push(Uri.encodeSpecialChars_(scheme, Uri.reDisallowedInSchemeOrUserInfo_, true), ':');
     }
 
-    var domain = this.getDomain();
+    const domain = this.getDomain();
     if (domain) {
       out.push('//');
 
-      var userInfo = this.getUserInfo();
+      const userInfo = this.getUserInfo();
       if (userInfo) {
-        out.push(
-          Uri.encodeSpecialChars_(
-            userInfo,
-            Uri.reDisallowedInSchemeOrUserInfo_,
-            true
-          ),
-          '@'
-        );
+        out.push(Uri.encodeSpecialChars_(userInfo, Uri.reDisallowedInSchemeOrUserInfo_, true), '@');
       }
 
       out.push(Uri.removeDoubleEncoding_(encodeURIComponent(domain)));
 
-      var port = this.getPort();
+      const port = this.getPort();
       if (port != null) {
         out.push(':', String(port));
       }
     }
 
-    var path = this.getPath();
+    const path = this.getPath();
     if (path) {
       if (this.hasDomain() && path.charAt(0) != '/') {
         out.push('/');
@@ -140,25 +128,20 @@ export class Uri {
       out.push(
         Uri.encodeSpecialChars_(
           path,
-          path.charAt(0) == '/'
-            ? Uri.reDisallowedInAbsolutePath_
-            : Uri.reDisallowedInRelativePath_,
+          path.charAt(0) == '/' ? Uri.reDisallowedInAbsolutePath_ : Uri.reDisallowedInRelativePath_,
           true
         )
       );
     }
 
-    var query = this.getEncodedQuery();
+    const query = this.getEncodedQuery();
     if (query) {
       out.push('?', query);
     }
 
-    var fragment = this.getFragment();
+    const fragment = this.getFragment();
     if (fragment) {
-      out.push(
-        '#',
-        Uri.encodeSpecialChars_(fragment, Uri.reDisallowedInFragment_)
-      );
+      out.push('#', Uri.encodeSpecialChars_(fragment, Uri.reDisallowedInFragment_));
     }
     return out.join('');
   }
@@ -181,7 +164,7 @@ export class Uri {
    * @return  The resolved URI.
    */
   resolve(relativeUri: Uri) {
-    var absoluteUri = this.clone();
+    let absoluteUri = this.clone();
     if (absoluteUri.scheme_ === 'data') {
       // Cannot have a relative URI to a data URI.
       absoluteUri = new Uri();
@@ -190,7 +173,7 @@ export class Uri {
     // we satisfy these conditions by looking for the first part of relativeUri
     // that is not blank and applying defaults to the rest
 
-    var overridden = relativeUri.hasScheme();
+    let overridden = relativeUri.hasScheme();
 
     if (overridden) {
       absoluteUri.setScheme(relativeUri.getScheme());
@@ -210,7 +193,7 @@ export class Uri {
       overridden = relativeUri.hasPort();
     }
 
-    var path = relativeUri.getPath();
+    let path = relativeUri.getPath();
     if (overridden) {
       absoluteUri.setPort(relativeUri.getPort());
     } else {
@@ -224,7 +207,7 @@ export class Uri {
             path = '/' + path;
           } else {
             // RFC 3986, section 5.2.3, case 2
-            var lastSlashIndex = absoluteUri.getPath().lastIndexOf('/');
+            const lastSlashIndex = absoluteUri.getPath().lastIndexOf('/');
             if (lastSlashIndex != -1) {
               path = absoluteUri.getPath().substr(0, lastSlashIndex + 1) + path;
             }
@@ -414,10 +397,7 @@ export class Uri {
       if (!decode) {
         // QueryData accepts encoded query string, so encode it if
         // decode flag is not true.
-        queryData = Uri.encodeSpecialChars_(
-          queryData,
-          Uri.reDisallowedInQuery_
-        ) as string;
+        queryData = Uri.encodeSpecialChars_(queryData, Uri.reDisallowedInQuery_) as string;
       }
       this.queryData_ = new QueryData(queryData as string);
     }
@@ -486,12 +466,12 @@ export class Uri {
       // and as a consequence do not require any processing.
       return path;
     } else {
-      var leadingSlash = path.lastIndexOf('/', 0) == 0;
-      var segments = path.split('/');
-      var out = [];
+      let leadingSlash = path.lastIndexOf('/', 0) == 0;
+      const segments = path.split('/');
+      const out = [];
 
-      for (var pos = 0; pos < segments.length; ) {
-        var segment = segments[pos++];
+      for (let pos = 0; pos < segments.length; ) {
+        const segment = segments[pos++];
 
         if (segment == '.') {
           if (leadingSlash && pos == segments.length) {
@@ -543,13 +523,9 @@ export class Uri {
    * @return {?string} null iff unescapedPart == null.
    * @private
    */
-  static encodeSpecialChars_(
-    unescapedPart: string,
-    extra: RegExp,
-    removeDoubleEncoding?: boolean
-  ) {
+  static encodeSpecialChars_(unescapedPart: string, extra: RegExp, removeDoubleEncoding?: boolean) {
     if (unescapedPart != null) {
-      var encoded = encodeURI(unescapedPart).replace(extra, Uri.encodeChar_);
+      let encoded = encodeURI(unescapedPart).replace(extra, Uri.encodeChar_);
       if (removeDoubleEncoding) {
         // encodeURI double-escapes %XX sequences used to represent restricted
         // characters in some URI components, remove the double escaping here.
@@ -567,7 +543,7 @@ export class Uri {
    * @private
    */
   static encodeChar_(ch: string) {
-    var n = ch.charCodeAt(0);
+    const n = ch.charCodeAt(0);
     return '%' + ((n >> 4) & 0xf).toString(16) + (n & 0xf).toString(16);
   }
 
@@ -640,11 +616,11 @@ export class QueryData {
       this.count_ = 0;
 
       if (this.encodedQuery_) {
-        var pairs = this.encodedQuery_.split('&');
-        for (var i = 0; i < pairs.length; i++) {
-          var indexOfEquals = pairs[i].indexOf('=');
-          var name = null;
-          var value = null;
+        const pairs = this.encodedQuery_.split('&');
+        for (let i = 0; i < pairs.length; i++) {
+          const indexOfEquals = pairs[i].indexOf('=');
+          let name = null;
+          let value = null;
           if (indexOfEquals >= 0) {
             name = pairs[i].substring(0, indexOfEquals);
             value = pairs[i].substring(indexOfEquals + 1);
@@ -668,7 +644,7 @@ export class QueryData {
     // Invalidate the cache.
     this.encodedQuery_ = null;
 
-    var values = this.keyMap_!.hasOwnProperty(key) ? this.keyMap_![key] : null;
+    let values = this.keyMap_!.hasOwnProperty(key) ? this.keyMap_![key] : null;
     if (!values) {
       this.keyMap_![key] = values = [];
     }
@@ -704,13 +680,13 @@ export class QueryData {
       return '';
     }
 
-    var sb = [];
+    const sb = [];
 
-    for (var key in this.keyMap_) {
-      var encodedKey = encodeURIComponent(key);
-      var val = this.keyMap_[key];
-      for (var j = 0; j < val.length; j++) {
-        var param = encodedKey;
+    for (const key in this.keyMap_) {
+      const encodedKey = encodeURIComponent(key);
+      const val = this.keyMap_[key];
+      for (let j = 0; j < val.length; j++) {
+        let param = encodedKey;
         // Ensure that null and undefined are encoded into the url as
         // literal strings.
         if (val[j] !== '') {
@@ -731,8 +707,8 @@ export class QueryData {
     const rv = new QueryData();
     rv.encodedQuery_ = this.encodedQuery_;
     if (this.keyMap_) {
-      var cloneMap: Record<string, string[]> = {};
-      for (var key in this.keyMap_) {
+      const cloneMap: Record<string, string[]> = {};
+      for (const key in this.keyMap_) {
         cloneMap[key] = this.keyMap_[key].concat();
       }
       rv.keyMap_ = cloneMap;
