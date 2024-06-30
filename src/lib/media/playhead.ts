@@ -195,7 +195,7 @@ export class MediaSourcePlayhead implements Playhead {
     config: StreamingConfiguration,
     startTime: number | null,
     onSeek: () => void,
-    onEvent: (event: Event | FakeEvent) => void
+    onEvent: (event: FakeEvent) => void
   ) {
     /**
      * The seek range must be at least this number of seconds long. If it is
@@ -519,7 +519,7 @@ export class MediaSourcePlayhead implements Playhead {
   createStallDetector_(
     mediaElement: HTMLMediaElement,
     config: StreamingConfiguration,
-    onEvent: (e: Event | FakeEvent) => void
+    onEvent: (e: FakeEvent) => void
   ) {
     if (!config.stallEnabled) {
       return null;

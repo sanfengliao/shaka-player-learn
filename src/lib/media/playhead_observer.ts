@@ -87,10 +87,7 @@ export class PlayheadObserverManager implements IReleasable {
     this.pollAllObservers_(/* seeking= */ true);
   }
 
-  /**
-   * @private
-   */
-  pollAllObservers_(seeking: boolean) {
+  private pollAllObservers_(seeking: boolean) {
     for (const observer of this.observers_) {
       observer.poll(this.mediaElement_.currentTime, seeking);
     }

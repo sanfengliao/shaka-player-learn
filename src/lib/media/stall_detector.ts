@@ -15,7 +15,7 @@ import { TimeRangesUtils } from './time_range_utils';
  *
  */
 export class StallDetector implements IReleasable {
-  private onEvent_: (e: Event | FakeEvent) => void;
+  private onEvent_: (e: FakeEvent) => void;
   private implementation_: StallDetectorImplementation;
   private wasMakingProgress_: boolean;
   private value_: number;
@@ -37,7 +37,7 @@ export class StallDetector implements IReleasable {
   constructor(
     implementation: StallDetectorImplementation,
     stallThresholdSeconds: number,
-    onEvent: (e: Event | FakeEvent) => void
+    onEvent: (e: FakeEvent) => void
   ) {
     this.onEvent_ = onEvent;
 

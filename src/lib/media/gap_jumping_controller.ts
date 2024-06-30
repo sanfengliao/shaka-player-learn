@@ -23,7 +23,7 @@ import { TimeRangesUtils } from './time_range_utils';
  * @implements {shaka.util.IReleasable}
  */
 export class GapJumpingController implements IReleasable {
-  private onEvent_: (e: Event | FakeEvent) => void;
+  private onEvent_: (e: FakeEvent) => void;
   private video_: HTMLMediaElement;
   private timeline_: PresentationTimeline;
   private config_: StreamingConfiguration;
@@ -52,7 +52,7 @@ export class GapJumpingController implements IReleasable {
     timeline: PresentationTimeline,
     config: StreamingConfiguration,
     stallDetector: StallDetector | null,
-    onEvent: (e: Event | FakeEvent) => void
+    onEvent: (e: FakeEvent) => void
   ) {
     this.onEvent_ = onEvent;
 

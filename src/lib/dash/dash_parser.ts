@@ -647,6 +647,7 @@ export class DashParser implements IManifestParser {
         type: ManifestParser.DASH,
         serviceDescription: this.parseServiceDescription_(mpd),
         nextUrl: this.parseMpdChaining_(mpd),
+        // periodCount: periods.length,
       };
 
       // We only need to do clock sync when we're using presentation start

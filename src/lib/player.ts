@@ -32,7 +32,7 @@ import { Manifest, Stream, Variant } from '../externs/shaka/manifest';
 import { MediaSourceEngine, OnMetadata } from './media/media_source_engine';
 import { TextDisplayer } from '../externs/shaka/text';
 import { IDestroyable } from './util/i_destroyable';
-import { Playhead, SrcEqualsPlayhead } from './media/playhead';
+import { MediaSourcePlayhead, Playhead, SrcEqualsPlayhead } from './media/playhead';
 import { PlayheadObserverManager } from './media/playhead_observer';
 import { PlayRateController } from './media/play_rate_controller';
 import { Timer } from './util/timer';
@@ -582,6 +582,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
 
     const plugins = Player.supportPlugins_;
     for (const name in plugins) {
+      // @ts-expect-error
       ret[name] = plugins[name]();
     }
 
@@ -925,7 +926,9 @@ export class Player extends FakeEventTarget implements IDestroyable {
 
       // Make sure that the app knows of the new buffering state.
       this.updateBufferState_();
-    } catch (error) {}
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   /**
@@ -1373,6 +1376,15 @@ export class Player extends FakeEventTarget implements IDestroyable {
       this.parser_.onInitialVariantChosen(toLazyLoad);
     }
 
+    // if (this.manifest_.isLowLatency && !this.config_.streaming.lowLatencyMode) {
+    //   log.alwaysWarn(
+    //     'Low-latency live stream detected, but ' +
+    //       'low-latency streaming mode is not enabled in Shaka Player. ' +
+    //       'Set streaming.lowLatencyMode configuration to true, and see ' +
+    //       'https://bit.ly/3clctcj for details.'
+    //   );
+    // }
+
     Player.applyPlayRange_(this.manifest_.presentationTimeline, this.config_.playRangeStart, this.config_.playRangeEnd);
 
     const setupPlayhead = (startTime: number) => {
@@ -1515,6 +1527,44 @@ export class Player extends FakeEventTarget implements IDestroyable {
       const delta = now - startTimeOfLoad;
       this.stats_.setLoadLatency(delta);
     });
+  }
+
+  /**
+   * Creates a new instance of Playhead.  This can be replaced by tests to
+   * create fake instances instead.
+   *
+   * @param startTime
+   * @return
+   */
+  createPlayhead(startTime: number) {
+    asserts.assert(this.manifest_, 'Must have manifest');
+    asserts.assert(this.video_, 'Must have video');
+    return new MediaSourcePlayhead(
+      this.video_,
+      this.manifest_,
+      this.config_.streaming,
+      startTime,
+      () => this.onSeek_(),
+      (event) => this.dispatchEvent(event)
+    );
+  }
+
+  /**
+   * Callback from Playhead.
+   */
+  private onSeek_() {
+    if (this.playheadObservers_) {
+      this.playheadObservers_.notifyOfSeek();
+    }
+    if (this.streamingEngine_) {
+      this.streamingEngine_.seeked();
+    }
+    if (this.bufferObserver_) {
+      // If we seek into an unbuffered range, we should fire a 'buffering' event
+      // immediately.  If StreamingEngine can buffer fast enough, we may not
+      // update our buffering tracking otherwise.
+      this.pollBufferState_();
+    }
   }
 
   /**

@@ -103,7 +103,11 @@ export interface Manifest {
    */
   serviceDescription: ServiceDescription | null;
   // The next url to play.
-  nextUrl?: string;
+  nextUrl: string | null;
+  // periodCount: number;
+  // gapCount: number;
+  // // If true, the manifest is Low Latency.
+  // isLowLatency: boolean;
 }
 /**
  * @description Contains the streams from one DASH period
