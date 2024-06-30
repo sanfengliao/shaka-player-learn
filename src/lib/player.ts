@@ -63,6 +63,7 @@ import { PublicPromise } from './util/public_promise';
 import { MediaReadyState } from './util/media_ready_state_utils';
 import { SegmentPrefetch } from './media/segment_prefetch';
 import { PresentationTimeline } from './media/presentation_timeline';
+import { RegionObserver } from './media/region_observer';
 
 export class Player extends FakeEventTarget implements IDestroyable {
   static LoadMode = {
@@ -1527,6 +1528,51 @@ export class Player extends FakeEventTarget implements IDestroyable {
       const delta = now - startTimeOfLoad;
       this.stats_.setLoadLatency(delta);
     });
+  }
+
+  /**
+   * Create the observers for MSE playback. These observers are responsible for
+   * notifying the app and player of specific events during MSE playback.
+   */
+  private createPlayheadObserversForMSE_(startTime: number) {
+    asserts.assert(this.manifest_, 'Must have manifest');
+    asserts.assert(this.regionTimeline_, 'Must have region timeline');
+    asserts.assert(this.video_, 'Must have video element');
+
+    const startsPastZero = this.isLive() || startTime > 0;
+
+    // Create the region observer. This will allow us to notify the app when we
+    // move in and out of timeline regions.
+    const regionObserver = new RegionObserver(this.regionTimeline_, startsPastZero);
+    regionObserver.addEventListener('enter', (event: any) => {
+      const region = event['region'];
+      this.onRegionEvent_(FakeEvent.EventName.TimelineRegionEnter, region);
+    });
+
+    regionObserver.addEventListener('exit', (event: any) => {
+      const region = event['region'];
+      this.onRegionEvent_(FakeEvent.EventName.TimelineRegionExit, region);
+    });
+
+    regionObserver.addEventListener('skip', (event: any) => {
+      const region = event['region'];
+
+      const seeking = event['seeking'];
+      // If we are seeking, we don't want to surface the enter/exit events since
+      // they didn't play through them.
+      if (!seeking) {
+        this.onRegionEvent_(FakeEvent.EventName.TimelineRegionEnter, region);
+        this.onRegionEvent_(FakeEvent.EventName.TimelineRegionExit, region);
+      }
+    });
+
+    // Now that we have all our observers, create a manager for them.
+    const manager = new PlayheadObserverManager(this.video_);
+    manager.manage(regionObserver);
+    if (this.qualityObserver_) {
+      manager.manage(this.qualityObserver_);
+    }
+    return manager;
   }
 
   /**
