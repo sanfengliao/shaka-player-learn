@@ -125,6 +125,8 @@ export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<Segmen
       return null;
     }
 
+    console.log('[segmentIndex] get', position, this.numEvicted_, this.references.length);
+
     const index = position - this.numEvicted_;
 
     if (index < 0 || index >= this.references.length) {
@@ -221,7 +223,7 @@ export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<Segmen
     this.references = this.references.filter((r) => r.endTime > time);
 
     const newSize = this.references.length;
-    const diff = newSize - oldSize;
+    const diff = oldSize - newSize;
 
     // Tracking the number of evicted refs will keep their "positions" stable
     // for the caller.

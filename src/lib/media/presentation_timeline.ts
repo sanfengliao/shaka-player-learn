@@ -421,8 +421,9 @@ export class PresentationTimeline {
    * @return {number} The current presentation time in seconds.
    * @private
    */
-  getLiveEdge_() {
+  private getLiveEdge_() {
     asserts.assert(this.presentationStartTime_ !== null, 'Cannot compute timeline live edge without start time');
+    // Date.now() is in milliseconds, from which we compute "now" in seconds.
     const now = (Date.now() + this.clockOffset_) / 1000.0;
     return Math.max(0, now - this.maxSegmentDuration_ - this.presentationStartTime_);
   }
