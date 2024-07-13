@@ -1167,7 +1167,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
         this.manifestFilterer_ = preloadManager.getManifestFilterer();
         this.manifest_ = preloadManager.getManifest()!;
         this.parserFactory_ = preloadManager.getParserFactory()!;
-        this.parser_ = preloadManager.getParser()!;
+        this.parser_ = preloadManager.receiveParser()!;
         this.regionTimeline_ = preloadManager.getRegionTimeline();
         this.qualityObserver_ = preloadManager.getQualityObserver()!;
 
@@ -1504,7 +1504,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
               if (timeToEnd <= this.config_.streaming.preloadNextUrlWindow) {
                 this.loadEventManager_.unlisten(mediaElement, 'timeupdate', onTimeUpdate);
                 asserts.assert(this.manifest_.nextUrl, 'this.manifest_.nextUrl should be valid.');
-                this.preloadNextUrl_ = await this.preload(this.manifest_.nextUrl);
+                this.preloadNextUrl_ = await this.preload(this.manifest_.nextUrl!);
               }
             }
           };
@@ -1529,6 +1529,77 @@ export class Player extends FakeEventTarget implements IDestroyable {
       const delta = now - startTimeOfLoad;
       this.stats_.setLoadLatency(delta);
     });
+  }
+
+  /**
+   * Starts to preload a given asset, and returns a PreloadManager object that
+   * represents that preloading process.
+   * The PreloadManager will load the manifest for that asset, as well as the
+   * initialization segment. It will not preload anything more than that;
+   * this feature is intended for reducing start-time latency, not for fully
+   * downloading assets before playing them (for that, use
+   * |shaka.offline.Storage|).
+   * You can pass that PreloadManager object in to the |load| method on this
+   * Player instance to finish loading that particular asset, or you can call
+   * the |destroy| method on the manager if the preload is no longer necessary.
+   * If this returns null rather than a PreloadManager, that indicates that the
+   * asset must be played with src=, which cannot be preloaded.
+   *
+   * @param assetUri
+   * @param startTime
+   *    When <code>startTime</code> is <code>null</code> or
+   *    <code>undefined</code>, playback will start at the default start time (0
+   *    for VOD and liveEdge for LIVE).
+   * @param mimeType
+   * @return
+   * @export
+   */
+  async preload(assetUri: string, startTime: number | null = null, mimeType: string | null = null) {
+    const preloadManager = await this.preloadInner_(assetUri, startTime, mimeType);
+    if (!preloadManager) {
+      this.onError_(
+        new ShakaError(
+          ShakaError.Severity.CRITICAL,
+          ShakaError.Category.PLAYER,
+          ShakaError.Code.SRC_EQUALS_PRELOAD_NOT_SUPPORTED
+        )
+      );
+    } else {
+      preloadManager.start();
+    }
+    return preloadManager;
+  }
+
+  /**
+   * Callback from AbrManager.
+   *
+   * @param {shaka.extern.Variant} variant
+   * @param {boolean=} clearBuffer
+   * @param {number=} safeMargin Optional amount of buffer (in seconds) to
+   *   retain when clearing the buffer.
+   *   Defaults to 0 if not provided. Ignored if clearBuffer is false.
+   * @private
+   */
+  private switch_(variant: Variant, clearBuffer = false, safeMargin = 0) {
+    log.debug('switch_');
+    asserts.assert(this.config_.abr.enabled, 'AbrManager should not call switch while disabled!');
+
+    if (!this.manifest_) {
+      // It could come from a preload manager operation.
+      return;
+    }
+
+    if (!this.streamingEngine_) {
+      // There's no way to change it.
+      return;
+    }
+
+    if (variant == this.streamingEngine_.getCurrentVariant()) {
+      // This isn't a change.
+      return;
+    }
+
+    this.switchVariant_(variant, /* fromAdaptation= */ true, clearBuffer, safeMargin);
   }
 
   /**
@@ -2321,8 +2392,18 @@ export class Player extends FakeEventTarget implements IDestroyable {
   selectAudioLanguage(language: string, role: string | null, channelsCount = 0, safeMargin = 0, codec = '') {
     if (this.manifest_ && this.playhead_) {
       // TODO: Dash
-    } else if (this.video_ && this.video_.audioTracks) {
-      // 只有safari支持，还是算了
+      this.currentAdaptationSetCriteria_ = new PreferenceBasedCriteria(
+        language,
+        role || '',
+        channelsCount,
+        '',
+        false,
+        '',
+        '',
+        '',
+        this.config_.mediaSource.codecSwitchingStrategy,
+        this.config_.manifest.dash.enableAudioGroups
+      );
     }
   }
 
@@ -2345,8 +2426,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
       }
 
       const interstitials: Interstitial[] = [];
-      for (const cue of track.activeCues) {
-        // @ts-expect-error
+      for (const cue of track.activeCues as any) {
         this.dispatchMetadataEvent_(cue.startTime, cue.endTime, cue.type, cue.value);
 
         // TODO(sanfeng): adManager
@@ -2927,6 +3007,27 @@ export class Player extends FakeEventTarget implements IDestroyable {
     );
 
     return false;
+  }
+  /**
+   * Chooses a new Variant.  If the new variant differs from the old one, it
+   * adds the new one to the switch history and switches to it.
+   *
+   * Called after a config change, a key status event, or an explicit language
+   * change.
+   *
+   * @param clearBuffer Optional clear buffer or not when
+   *  switch to new variant
+   *  Defaults to true if not provided
+   * @param safeMargin Optional amount of buffer (in seconds) to
+   *   retain when clearing the buffer.
+   *   Defaults to 0 if not provided. Ignored if clearBuffer is false.
+   */
+  private chooseVariantAndSwitch_(clearBuffer = true, safeMargin = 0, force = false, fromAdaptation = true) {
+    asserts.assert(this.config_, 'Must not be destroyed');
+    const chosenVariant = this.chooseVariant_();
+    if (chosenVariant) {
+      this.switchVariant_(chosenVariant, fromAdaptation, clearBuffer, safeMargin, force);
+    }
   }
 
   /**

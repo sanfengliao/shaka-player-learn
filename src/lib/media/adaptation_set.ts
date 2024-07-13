@@ -110,9 +110,6 @@ export class AdaptationSet {
     return true;
   }
 
-  /**
-   * @return {!Iterable.<shaka.extern.Variant>}
-   */
   values() {
     return this.variants_.values();
   }

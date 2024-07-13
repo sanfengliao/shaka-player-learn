@@ -1022,7 +1022,7 @@ export class StreamingEngine implements IDestroyable {
    * @returns The number of seconds to wait until updating again or
    *   null if another update does not need to be scheduled.
    */
-  update_(mediaState: MediaState): number | null {
+  private update_(mediaState: MediaState): number | null {
     asserts.assert(this.manifest_, 'manifest_ should not be null');
     asserts.assert(this.config_, 'config_ should not be null');
     // Do not schedule update for closed captions text mediastate, since closed
@@ -1667,7 +1667,7 @@ export class StreamingEngine implements IDestroyable {
       await setProperties();
     }
 
-    if (InitSegmentReference.equal(reference.initSegmentReference, mediaState.lastInitSegmentReference)) {
+    if (!InitSegmentReference.equal(reference.initSegmentReference, mediaState.lastInitSegmentReference)) {
       mediaState.lastInitSegmentReference = reference.initSegmentReference;
       if (reference.isIndependent() && reference.initSegmentReference) {
         log.v1(logPrefix, 'fetching init segment');
@@ -2180,6 +2180,17 @@ export class StreamingEngine implements IDestroyable {
       if (flush) {
         await this.playerInterface_.mediaSourceEngine.flush(mediaState.type);
       }
+    }
+
+    this.destroyer_.ensureNotDestroyed();
+
+    log.debug(logPrefix, 'cleared buffer');
+    mediaState.clearingBuffer = false;
+    mediaState.endOfStream = false;
+    // Since the clear operation was async, check to make sure we're not doing
+    // another update and we don't have one scheduled yet.
+    if (!mediaState.performingUpdate && !mediaState.updateTimer) {
+      this.scheduleUpdate_(mediaState, 0);
     }
   }
 

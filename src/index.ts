@@ -1,6 +1,6 @@
-import { Player } from './lib';
+import { Player, log } from './lib';
 import { polyfill } from './lib/polyfill';
-
+log.setLevel(6);
 polyfill.installAll();
 
 const manifestUri = 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd';

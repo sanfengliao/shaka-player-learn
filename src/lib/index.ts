@@ -4,3 +4,4 @@ import './net/http_xhr_plugin';
 import './net/data_uri_plugin';
 registerDashParser();
 export * from './player';
+export * from './debug/log';
