@@ -1,15 +1,16 @@
-import { Player, log } from './lib';
-import { polyfill } from './lib/polyfill';
+import { Player, log } from '../../src/lib';
+import { polyfill } from '../../src/lib/polyfill';
 log.setLevel(6);
 polyfill.installAll();
 
-const manifestUri = 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd';
+const manifestUri = 'https://livesim2.dashif.org/livesim2/testpic_2s/Manifest.mpd';
 // Create a Player instance.
 const video = document.getElementById('video') as HTMLVideoElement;
 const player = new Player();
 await player.attach(video);
 
 // Attach player to the window to make it easy to access in the JS console.
+// @ts-expect-error
 window.player = player;
 
 // Listen for error events.

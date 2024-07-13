@@ -28,7 +28,7 @@ export class TransmuxerEngine {
     APPLICATION: 4,
   };
 
-  private static transmuxerMap_: Record<string, TransmuxerEnginePluginObject>;
+  private static transmuxerMap_: Record<string, TransmuxerEnginePluginObject> = {};
   // TODO: revisit this when the compiler supports partially-exported classes.
   /**
    * @override
