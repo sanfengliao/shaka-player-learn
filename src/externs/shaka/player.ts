@@ -464,6 +464,99 @@ export interface DrmConfiguration {
 }
 
 /**
+ * Dynamic Target Latency configuration options.
+ */
+export interface DynamicTargetLatencyConfiguration {
+  /**
+   *  If <code>true</code>, dynamic latency for live sync is enabled. When
+   *   enabled, the target latency will be adjusted closer to the min latency
+   *   when playback is stable (see <code>stabilityThreshold</code>). If
+   *   there are rebuffering events, then the target latency will move towards
+   *   the max latency value in increments of <code>rebufferIncrement</code>.
+   *   Defaults to <code>false</code>.
+   */
+  enabled: boolean;
+  /**
+   * *   Number of seconds after a rebuffering before we are considered stable and
+   *   will move the target latency towards <code>minLatency</code>
+   *   value. Defaults to <code>60</code>
+   */
+  stabilityThreshold: number;
+  /**
+   * The value, in seconds, to increment the target latency towards
+   *   <code>maxLatency</code> after a rebuffering event. Defaults to
+   *   <code>0.5</code>.
+   */
+  rebufferIncrement: number;
+  /**
+   *  *   Number of times that dynamic target latency will back off to
+   *   <code>maxLatency</code> and attempt to adjust it closer to
+   *   <code>minLatency</code>. Defaults to <code>10</code>
+   */
+  maxAttempts: number;
+  /**
+   *  *   The latency to use when a rebuffering event causes us to back off from
+   *   the live edge. Defaults to <code>4</code>
+   */
+  maxLatency: number;
+  /**
+   *  *   The latency to work towards when the network is stable and we want to get
+   *   closer to the live edge. Defaults to <code>1</code>
+   */
+  minLatency: number;
+}
+
+export interface LiveSyncConfiguration {
+  /**
+   * Enable the live stream sync against the live edge by changing the playback
+   * rate. Defaults to <code>false</code>.
+   * Note: on some SmartTVs, if this is activated, it may not work or the sound
+   * may be lost when activated.
+   */
+  enabled: boolean;
+  /**
+   *  *   Latency tolerance for target latency, in seconds. Effective only if
+   *   liveSync is enabled. Defaults to <code>0.5</code>.
+   */
+  targetLatencyTolerance: number;
+  /**
+   *  Preferred latency, in seconds. Effective only if liveSync is true.
+   *   Defaults to <code>0.5</code>.
+   */
+  targetLatency: number;
+  /**
+   *  Max playback rate used for latency chasing. It is recommended to use a
+   *   value between 1 and 2. Effective only if liveSync is enabled. Defaults to
+   *   <code>1.1</code>.
+   */
+  maxPlaybackRate: number;
+  /**
+   *  Minimum playback rate used for latency chasing. It is recommended to use a
+   *   value between 0 and 1. Effective only if liveSync is enabled. Defaults to
+   *   <code>0.95</code>.
+   */
+  minPlaybackRate: number;
+  /**
+   *  If <code>true</code>, panic mode for live sync is enabled. When enabled,
+   *   will set the playback rate to the <code>minPlaybackRate</code>
+   *   until playback has continued past a rebuffering for longer than the
+   *   <code>panicThreshold</code>. Defaults to <code>false</code>.
+   */
+  panicMode: boolean;
+  /**
+   * Number of seconds that playback stays in panic mode after a rebuffering.
+   *   Defaults to <code>60</code>
+   */
+  panicThreshold: number;
+  /**
+   *  *   The dynamic target latency config for dynamically adjusting the target
+   *   latency to be closer to edge when network conditions are good and to back
+   *   off when network conditions are bad.
+   */
+  dynamicTargetLatency: DynamicTargetLatencyConfiguration;
+}
+
+/**
  * The StreamingEngine's configuration options.
  */
 export interface StreamingConfiguration {
@@ -669,52 +762,10 @@ export interface StreamingConfiguration {
    */
   disableVideoPrefetch: boolean;
   /**
-   * Enable the live stream sync against the live edge by changing the playback
-   * rate. Defaults to <code>false</code>.
-   * Note: on some SmartTVs, if this is activated, it may not work or the sound
-   * may be lost when activated.
+   * The live sync configuration for keeping near the live edge.
    */
-  liveSync: boolean;
-  /**
-   * Latency tolerance for target latency, in seconds. Effective only if
-   * liveSync is true. Defaults to <code>0.5</code>.
-   */
-  liveSyncTargetLatencyTolerance: number;
-  /**
-   * Maximum acceptable latency, in seconds. Effective only if liveSync is
-   * true. Defaults to <code>1</code>.
-   */
-  liveSyncMaxLatency: number;
+  liveSync: LiveSyncConfiguration;
 
-  /**
-   * Playback rate used for latency chasing. It is recommended to use a value
-   * between 1 and 2. Effective only if liveSync is true. Defaults to
-   * <code>1.1</code>.
-   */
-  liveSyncPlaybackRate: number;
-  /**
-   * Minimum acceptable latency, in seconds. Effective only if liveSync is
-   * true. Defaults to <code>0</code>.
-   */
-  liveSyncMinLatency: number;
-  /**
-   * Minimum playback rate used for latency chasing. It is recommended to use a
-   * value between 0 and 1. Effective only if liveSync is true. Defaults to
-   * <code>0.95</code>.
-   */
-  liveSyncMinPlaybackRate: number;
-  /**
-   * If <code>true</code>, panic mode for live sync is enabled. When enabled,
-   * will set the playback rate to the <code>liveSyncMinPlaybackRate</code>
-   * until playback has continued past a rebuffering for longer than the
-   * <code>liveSyncPanicThreshold</code>. Defaults to <code>false</code>.
-   */
-  liveSyncPanicMode: boolean;
-  /**
-   * Number of seconds that playback stays in panic mode after a rebuffering.
-   * Defaults to <code>60</code>
-   */
-  liveSyncPanicThreshold: number;
   /**
    * Indicate if we should recover from VIDEO_ERROR resetting Media Source.
    * Defaults to <code>true</code>.

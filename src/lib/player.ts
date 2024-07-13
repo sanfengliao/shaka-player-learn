@@ -266,7 +266,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
     this.networkingEngine_.setForceHTTP(this.config_.streaming.forceHTTP);
     this.networkingEngine_.setForceHTTPS(this.config_.streaming.forceHTTPS);
     // TODO(sanfeng): AdManager
-    // this.preloadDueAdManagerTimer_ = new shaka.util.Timer(async () => {
+    // this.preloadDueAdManagerTimer_ = new util.Timer(async () => {
     //   if (this.preloadDueAdManager_) {
     //     goog.asserts.assert(this.preloadDueAdManagerVideo_, 'Must have video');
     //     await this.attach(
@@ -282,11 +282,11 @@ export class Player extends FakeEventTarget implements IDestroyable {
     //   }
     // });
 
-    // if (shaka.Player.adManagerFactory_) {
-    //   this.adManager_ = shaka.Player.adManagerFactory_();
+    // if (Player.adManagerFactory_) {
+    //   this.adManager_ = Player.adManagerFactory_();
     //   this.adManager_.configure(this.config_.ads);
 
-    //   // Note: we don't use shaka.ads.AdManager.AD_CONTENT_PAUSE_REQUESTED to
+    //   // Note: we don't use ads.AdManager.AD_CONTENT_PAUSE_REQUESTED to
     //   // avoid add a optional module in the player.
     //   this.adManagerEventManager_.listen(
     //       this.adManager_, 'ad-content-pause-requested', async (e) => {
@@ -301,7 +301,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
     //         }
     //       });
 
-    //   // Note: we don't use shaka.ads.AdManager.AD_CONTENT_RESUME_REQUESTED to
+    //   // Note: we don't use ads.AdManager.AD_CONTENT_RESUME_REQUESTED to
     //   // avoid add a optional module in the player.
     //   this.adManagerEventManager_.listen(
     //       this.adManager_, 'ad-content-resume-requested', (e) => {
@@ -312,7 +312,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
     //         this.preloadDueAdManagerTimer_.tickAfter(0.1);
     //       });
 
-    //   // Note: we don't use shaka.ads.AdManager.AD_CONTENT_ATTACH_REQUESTED to
+    //   // Note: we don't use ads.AdManager.AD_CONTENT_ATTACH_REQUESTED to
     //   // avoid add a optional module in the player.
     //   this.adManagerEventManager_.listen(
     //       this.adManager_, 'ad-content-attach-requested', async (e) => {
@@ -346,6 +346,80 @@ export class Player extends FakeEventTarget implements IDestroyable {
       this.attach(mediaElement, /* initializeMediaSource= */ true);
     }
   }
+
+  /**
+   * Retry streaming after a streaming failure has occurred. When the player has
+   * not loaded content or is loading content, this will be a no-op and will
+   * return <code>false</code>.
+   *
+   * <p>
+   * If the player has loaded content, and streaming has not seen an error, this
+   * will return <code>false</code>.
+   *
+   * <p>
+   * If the player has loaded content, and streaming seen an error, but the
+   * could not resume streaming, this will return <code>false</code>.
+   *
+   * @param {number=} retryDelaySeconds
+   * @return {boolean}
+   * @export
+   */
+  retryStreaming(retryDelaySeconds = 0.1) {
+    return this.loadMode_ === Player.LoadMode.MEDIA_SOURCE ? this.streamingEngine_.retry(retryDelaySeconds) : false;
+  }
+
+  /**
+   * Checks to re-enable variants that were temporarily disabled due to network
+   * errors. If any variants are enabled this way, a new variant may be chosen
+   * for playback.
+   * @private
+   */
+  private checkVariants_() {
+    asserts.assert(this.manifest_, 'Should have manifest!');
+
+    const now = Date.now() / 1000;
+    let hasVariantUpdate = false;
+
+    const streamsAsString = (variant: Variant) => {
+      let str = '';
+      if (variant.video) {
+        str += 'video:' + variant.video.id;
+      }
+      if (variant.audio) {
+        str += str ? '&' : '';
+        str += 'audio:' + variant.audio.id;
+      }
+      return str;
+    };
+
+    let shouldStopTimer = true;
+    for (const variant of this.manifest_.variants) {
+      if (variant.disabledUntilTime > 0 && variant.disabledUntilTime <= now) {
+        variant.disabledUntilTime = 0;
+        hasVariantUpdate = true;
+
+        log.v2('Re-enabled variant with ' + streamsAsString(variant));
+      }
+      if (variant.disabledUntilTime > 0) {
+        shouldStopTimer = false;
+      }
+    }
+
+    if (shouldStopTimer) {
+      this.checkVariantsTimer_.stop();
+    }
+
+    if (hasVariantUpdate) {
+      // Reconsider re-enabled variant for ABR switching.
+      this.chooseVariantAndSwitch_(
+        /* clearBuffer= */ false,
+        /* safeMargin= */ undefined,
+        /* force= */ false,
+        /* fromAdaptation= */ false
+      );
+    }
+  }
+
   async destroy() {
     // Make sure we only execute the destroy logic once.
     if (this.loadMode_ === Player.LoadMode.DESTROYED) {
@@ -504,7 +578,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * @export
    */
   // static setAdManagerFactory(factory) {
-  //   shaka.Player.adManagerFactory_ = factory;
+  //   Player.adManagerFactory_ = factory;
   // }
 
   /**
@@ -543,12 +617,12 @@ export class Player extends FakeEventTarget implements IDestroyable {
     //   return false;
     // }
 
-    // If we have MediaSource (MSE) support, we should be able to use Shaka.
+    // If we have MediaSource (MSE) support, we should be able to use
     if (Platform.supportsMediaSource()) {
       return true;
     }
 
-    // If we don't have MSE, we _may_ be able to use Shaka.  Look for native HLS
+    // If we don't have MSE, we _may_ be able to use   Look for native HLS
     // support, and call this platform usable if we have it.
     return Platform.supportsMediaType('application/x-mpegurl');
   }
@@ -565,16 +639,16 @@ export class Player extends FakeEventTarget implements IDestroyable {
    */
   static async probeSupport(promptsOkay = true) {
     asserts.assert(Player.isBrowserSupported(), 'Must have basic support');
-    let drm = {};
+    const drm = {};
     // TODO(sanfeng): DrmEngine
     // if (promptsOkay) {
-    //   drm = await shaka.media.DrmEngine.probeSupport();
+    //   drm = await media.DrmEngine.probeSupport();
     // }
     const manifest = ManifestParser.probeSupport();
     const media = MediaSourceEngine.probeSupport();
     const hardwareResolution = await Platform.detectMaxHardwareResolution();
 
-    /** @type {shaka.extern.SupportType} */
+    /** @type {extern.SupportType} */
     const ret = {
       manifest,
       media,
@@ -671,12 +745,12 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * way to inject fake media source engine instances.
    *
    * @param {!HTMLMediaElement} mediaElement
-   * @param {!shaka.extern.TextDisplayer} textDisplayer
-   * @param {!function(!Array.<shaka.extern.ID3Metadata>, number, ?number)}
+   * @param {!extern.TextDisplayer} textDisplayer
+   * @param {!function(!Array.<extern.ID3Metadata>, number, ?number)}
    *  onMetadata
-   * @param {shaka.lcevc.Dec} lcevcDec
+   * @param {lcevc.Dec} lcevcDec
    *
-   * @return {!shaka.media.MediaSourceEngine}
+   * @return {!media.MediaSourceEngine}
    */
   createMediaSourceEngine(mediaElement: HTMLMediaElement, textDisplayer: TextDisplayer | null, onMetadata: OnMetadata) {
     return new MediaSourceEngine(mediaElement, textDisplayer, onMetadata);
@@ -820,7 +894,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
 
       // EME v0.1b requires the media element to clear the MediaKeys
       // TODO(sanfeng): DRMEngine
-      // if (shaka.util.Platform.isMediaKeysPolyfilled('webkit') && this.drmEngine_) {
+      // if (util.Platform.isMediaKeysPolyfilled('webkit') && this.drmEngine_) {
       //   await this.drmEngine_.destroy();
       //   this.drmEngine_ = null;
       // }
@@ -1482,9 +1556,9 @@ export class Player extends FakeEventTarget implements IDestroyable {
     const isLive = this.isLive();
     if (
       (isLive &&
-        (this.config_.streaming.liveSync ||
+        (this.config_.streaming.liveSync.enabled ||
           this.manifest_.serviceDescription ||
-          this.config_.streaming.liveSyncPanicMode)) ||
+          this.config_.streaming.liveSync.panicMode)) ||
       this.config_.streaming.vodDynamicPlaybackRate
     ) {
       const onTimeUpdate = () => this.onTimeUpdate_();
@@ -1538,7 +1612,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * initialization segment. It will not preload anything more than that;
    * this feature is intended for reducing start-time latency, not for fully
    * downloading assets before playing them (for that, use
-   * |shaka.offline.Storage|).
+   * |offline.Storage|).
    * You can pass that PreloadManager object in to the |load| method on this
    * Player instance to finish loading that particular asset, or you can call
    * the |destroy| method on the manager if the preload is no longer necessary.
@@ -1571,9 +1645,309 @@ export class Player extends FakeEventTarget implements IDestroyable {
   }
 
   /**
+   * Callback for liveSync and vodDynamicPlaybackRate
+   */
+  private onTimeUpdate_() {
+    const playbackRate = this.video_.playbackRate;
+    const isLive = this.isLive();
+    if (this.config_.streaming.vodDynamicPlaybackRate && !isLive) {
+      const minPlaybackRate = this.config_.streaming.vodDynamicPlaybackRateLowBufferRate;
+      const bufferFullness = this.getBufferFullness();
+      const bufferThreshold = this.config_.streaming.vodDynamicPlaybackRateBufferRatio;
+      if (bufferFullness <= bufferThreshold) {
+        if (playbackRate != minPlaybackRate) {
+          log.debug(
+            'Buffer fullness ratio (' +
+              bufferFullness +
+              ') ' +
+              'is less than the vodDynamicPlaybackRateBufferRatio (' +
+              bufferThreshold +
+              '). Updating playbackRate to ' +
+              minPlaybackRate
+          );
+          this.trickPlay(minPlaybackRate);
+        }
+      } else if (bufferFullness == 1) {
+        if (playbackRate !== this.playRateController_.getDefaultRate()) {
+          log.debug('Buffer is full. Cancel trick play.');
+          this.cancelTrickPlay();
+        }
+      }
+    }
+    // If the live stream has reached its end, do not sync.
+    if (!isLive) {
+      return;
+    }
+
+    // TODO(sanfeng): Live
+    // const seekRange = this.seekRange();
+    // if (!Number.isFinite(seekRange.end)) {
+    //   return;
+    // }
+    // const currentTime = this.video_.currentTime;
+    // if (currentTime < seekRange.start) {
+    //   // Bad stream?
+    //   return;
+    // }
+
+    // let targetLatency;
+    // let maxLatency;
+    // let maxPlaybackRate;
+    // let minLatency;
+    // let minPlaybackRate;
+    // const targetLatencyTolerance = this.config_.streaming.liveSync.targetLatencyTolerance;
+    // const dynamicTargetLatency = this.config_.streaming.liveSync.dynamicTargetLatency.enabled;
+    // const stabilityThreshold = this.config_.streaming.liveSync.dynamicTargetLatency.stabilityThreshold;
+
+    // if (this.config_.streaming.liveSync && this.config_.streaming.liveSync.enabled) {
+    //   targetLatency = this.config_.streaming.liveSync.targetLatency;
+    //   maxLatency = targetLatency + targetLatencyTolerance;
+    //   minLatency = Math.max(0, targetLatency - targetLatencyTolerance);
+    //   maxPlaybackRate = this.config_.streaming.liveSync.maxPlaybackRate;
+    //   minPlaybackRate = this.config_.streaming.liveSync.minPlaybackRate;
+    // } else {
+    //   // serviceDescription must override if it is defined in the MPD and
+    //   // liveSync configuration is not set.
+    //   if (this.manifest_ && this.manifest_.serviceDescription) {
+    //     targetLatency = this.manifest_.serviceDescription.targetLatency;
+    //     if (this.manifest_.serviceDescription.targetLatency != null) {
+    //       maxLatency = this.manifest_.serviceDescription.targetLatency + targetLatencyTolerance;
+    //     } else if (this.manifest_.serviceDescription.maxLatency != null) {
+    //       maxLatency = this.manifest_.serviceDescription.maxLatency;
+    //     }
+    //     if (this.manifest_.serviceDescription.targetLatency != null) {
+    //       minLatency = Math.max(0, this.manifest_.serviceDescription.targetLatency - targetLatencyTolerance);
+    //     } else if (this.manifest_.serviceDescription.minLatency != null) {
+    //       minLatency = this.manifest_.serviceDescription.minLatency;
+    //     }
+    //     maxPlaybackRate =
+    //       this.manifest_.serviceDescription.maxPlaybackRate || this.config_.streaming.liveSync.maxPlaybackRate;
+    //     minPlaybackRate =
+    //       this.manifest_.serviceDescription.minPlaybackRate || this.config_.streaming.liveSync.minPlaybackRate;
+    //   }
+    // }
+
+    // if (!this.currentTargetLatency_ && typeof targetLatency === 'number') {
+    //   this.currentTargetLatency_ = targetLatency;
+    // }
+
+    // const maxAttempts = this.config_.streaming.liveSync.dynamicTargetLatency.maxAttempts;
+    // if (
+    //   dynamicTargetLatency &&
+    //   this.targetLatencyReached_ &&
+    //   this.currentTargetLatency_ !== null &&
+    //   typeof targetLatency === 'number' &&
+    //   this.rebufferingCount_ < maxAttempts &&
+    //   Date.now() - this.targetLatencyReached_ > stabilityThreshold * 1000
+    // ) {
+    //   const dynamicMinLatency = this.config_.streaming.liveSync.dynamicTargetLatency.minLatency;
+    //   const latencyIncrement = (targetLatency - dynamicMinLatency) / 2;
+    //   this.currentTargetLatency_ = Math.max(
+    //     this.currentTargetLatency_ - latencyIncrement,
+    //     // current target latency should be within the tolerance of the min
+    //     // latency to not overshoot it
+    //     dynamicMinLatency + targetLatencyTolerance
+    //   );
+    //   this.targetLatencyReached_ = Date.now();
+    // }
+    // if (dynamicTargetLatency && this.currentTargetLatency_ !== null) {
+    //   maxLatency = this.currentTargetLatency_ + targetLatencyTolerance;
+    //   minLatency = this.currentTargetLatency_ - targetLatencyTolerance;
+    // }
+
+    // const latency = seekRange.end - this.video_.currentTime;
+    // let offset = 0;
+    // // In src= mode, the seek range isn't updated frequently enough, so we need
+    // // to fudge the latency number with an offset.  The playback rate is used
+    // // as an offset, since that is the amount we catch up 1 second of
+    // // accelerated playback.
+    // if (this.loadMode_ == Player.LoadMode.SRC_EQUALS) {
+    //   const buffered = this.video_.buffered;
+    //   if (buffered.length > 0) {
+    //     const bufferedEnd = buffered.end(buffered.length - 1);
+    //     offset = Math.max(maxPlaybackRate, bufferedEnd - seekRange.end);
+    //   }
+    // }
+
+    // const panicMode = this.config_.streaming.liveSync.panicMode;
+    // const panicThreshold = this.config_.streaming.liveSync.panicThreshold * 1000;
+    // const timeSinceLastRebuffer = Date.now() - this.bufferObserver_.getLastRebufferTime();
+    // if (panicMode && !minPlaybackRate) {
+    //   minPlaybackRate = this.config_.streaming.liveSync.minPlaybackRate;
+    // }
+
+    // if (panicMode && minPlaybackRate && timeSinceLastRebuffer <= panicThreshold) {
+    //   if (playbackRate != minPlaybackRate) {
+    //     log.debug(
+    //       'Time since last rebuffer (' +
+    //         timeSinceLastRebuffer +
+    //         's) ' +
+    //         'is less than the live sync panicThreshold (' +
+    //         panicThreshold +
+    //         's). Updating playbackRate to ' +
+    //         minPlaybackRate
+    //     );
+    //     this.trickPlay(minPlaybackRate);
+    //   }
+    // } else if (maxLatency && maxPlaybackRate && latency - offset > maxLatency) {
+    //   if (playbackRate != maxPlaybackRate) {
+    //     log.debug(
+    //       'Latency (' +
+    //         latency +
+    //         's) is greater than ' +
+    //         'live sync maxLatency (' +
+    //         maxLatency +
+    //         's). ' +
+    //         'Updating playbackRate to ' +
+    //         maxPlaybackRate
+    //     );
+    //     this.trickPlay(maxPlaybackRate);
+    //   }
+    //   this.targetLatencyReached_ = null;
+    // } else if (minLatency && minPlaybackRate && latency - offset < minLatency) {
+    //   if (playbackRate != minPlaybackRate) {
+    //     log.debug(
+    //       'Latency (' +
+    //         latency +
+    //         's) is smaller than ' +
+    //         'live sync minLatency (' +
+    //         minLatency +
+    //         's). ' +
+    //         'Updating playbackRate to ' +
+    //         minPlaybackRate
+    //     );
+    //     this.trickPlay(minPlaybackRate);
+    //   }
+    //   this.targetLatencyReached_ = null;
+    // } else if (playbackRate !== this.playRateController_.getDefaultRate()) {
+    //   this.cancelTrickPlay();
+    //   this.targetLatencyReached_ = Date.now();
+    // }
+  }
+
+  /**
+   * Enable trick play to skip through content without playing by repeatedly
+   * seeking. For example, a rate of 2.5 would result in 2.5 seconds of content
+   * being skipped every second. A negative rate will result in moving
+   * backwards.
+   *
+   * <p>
+   * If the player has not loaded content or is still loading content this will
+   * be a no-op. Wait until <code>load</code> has completed before calling.
+   *
+   * <p>
+   * Trick play will be canceled automatically if the playhead hits the
+   * beginning or end of the seekable range for the content.
+   *
+   * @param  rate
+   * @export
+   */
+  trickPlay(rate: number) {
+    // A playbackRate of 0 is used internally when we are in a buffering state,
+    // and doesn't make sense for trick play.  If you set a rate of 0 for trick
+    // play, we will reject it and issue a warning.  If it happens during a
+    // test, we will fail the test through this assertion.
+    asserts.assert(rate != 0, 'Should never set a trick play rate of 0!');
+    if (rate == 0) {
+      log.alwaysWarn('A trick play rate of 0 is unsupported!');
+      return;
+    }
+    this.trickPlayEventManager_.removeAll();
+
+    if (this.video_.paused) {
+      // Our fast forward is implemented with playbackRate and needs the video
+      // to be playing (to not be paused) to take immediate effect.
+      // If the video is paused, "unpause" it.
+      this.video_.play();
+    }
+    this.playRateController_.set(rate);
+
+    if (this.loadMode_ == Player.LoadMode.MEDIA_SOURCE) {
+      this.abrManager_.playbackRateChanged(rate);
+      this.streamingEngine_.setTrickPlay(Math.abs(rate) > 1);
+    }
+    if (this.isLive()) {
+      this.trickPlayEventManager_.listen(this.video_, 'timeupdate', () => {
+        const currentTime = this.video_.currentTime;
+        const seekRange = this.seekRange();
+        const safeSeekOffset = this.config_.streaming.safeSeekOffset;
+
+        // Cancel trick play if we hit the beginning or end of the seekable
+        // (Sub-second accuracy not required here)
+        if (rate > 0) {
+          if (Math.floor(currentTime) >= Math.floor(seekRange.end)) {
+            this.cancelTrickPlay();
+          }
+        } else {
+          if (Math.floor(currentTime) <= Math.floor(seekRange.start + safeSeekOffset)) {
+            this.cancelTrickPlay();
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Cancel trick-play. If the player has not loaded content or is still loading
+   * content this will be a no-op.
+   *
+   * @export
+   */
+  cancelTrickPlay() {
+    const defaultPlaybackRate = this.playRateController_.getDefaultRate();
+    if (this.loadMode_ == Player.LoadMode.SRC_EQUALS) {
+      this.playRateController_.set(defaultPlaybackRate);
+    }
+
+    if (this.loadMode_ == Player.LoadMode.MEDIA_SOURCE) {
+      this.playRateController_.set(defaultPlaybackRate);
+      this.abrManager_.playbackRateChanged(defaultPlaybackRate);
+      this.streamingEngine_.setTrickPlay(false);
+    }
+    this.trickPlayEventManager_.removeAll();
+  }
+
+  /**
+   * Returns the ratio of video length buffered compared to buffering Goal
+   */
+  getBufferFullness() {
+    if (this.video_) {
+      const bufferedLength = this.video_.buffered.length;
+      const bufferedEnd = bufferedLength > 0 ? this.video_.buffered.end(bufferedLength - 1) : 0;
+      const bufferingGoal = this.getConfiguration().streaming.bufferingGoal;
+      const lengthToBeBuffered = Math.min(this.video_.currentTime + bufferingGoal, this.seekRange().end);
+      if (bufferedEnd >= lengthToBeBuffered) {
+        return 1;
+      } else if (bufferedEnd <= this.video_.currentTime) {
+        return 0;
+      } else if (bufferedEnd < lengthToBeBuffered) {
+        return (bufferedEnd - this.video_.currentTime) / (lengthToBeBuffered - this.video_.currentTime);
+      }
+    }
+
+    return 0;
+  }
+
+  /**
+   * Return a copy of the current configuration.  Modifications of the returned
+   * value will not affect the Player's active configuration.  You must call
+   * <code>player.configure()</code> to make changes.
+   *
+   * @return {extern.PlayerConfiguration}
+   * @export
+   */
+  getConfiguration() {
+    asserts.assert(this.config_, 'Config must not be null!');
+
+    const ret = this.defaultConfig_();
+    PlayerConfiguration.mergeConfigObjects(ret, this.config_, this.defaultConfig_());
+    return ret;
+  }
+
+  /**
    * Callback from AbrManager.
    *
-   * @param {shaka.extern.Variant} variant
+   * @param {extern.Variant} variant
    * @param {boolean=} clearBuffer
    * @param {number=} safeMargin Optional amount of buffer (in seconds) to
    *   retain when clearing the buffer.
@@ -1921,6 +2295,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
       beforeAppendSegment: (contentType, segment): Promise<void> => {
         // TODO(sanfeng): DrmEngine
         // return this.drmEngine_.parseInbandPssh(contentType, segment);
+        return Promise.resolve();
       },
       onMetadata: (metadata, offset, endTime) => {
         this.processTimedMetadataMediaSrc_(metadata, offset, endTime);
@@ -2316,7 +2691,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
     await Promise.race([fullyLoaded, timeout]);
     const isLive = this.isLive();
     if (
-      (isLive && (this.config_.streaming.liveSync || this.config_.streaming.liveSyncPanicMode)) ||
+      (isLive && (this.config_.streaming.liveSync.enabled || this.config_.streaming.liveSync.panicMode)) ||
       this.config_.streaming.vodDynamicPlaybackRate
     ) {
       const onTimeUpdate = () => this.onTimeUpdate_();
@@ -2880,8 +3255,8 @@ export class Player extends FakeEventTarget implements IDestroyable {
     //     });
     //   },
     //   onExpirationUpdated: (id, expiration) => {
-    //     const event = shaka.Player.makeEvent_(
-    //         shaka.util.FakeEvent.EventName.ExpirationUpdated);
+    //     const event = Player.makeEvent_(
+    //         util.FakeEvent.EventName.ExpirationUpdated);
     //     preloadManager.dispatchEvent(event);
     //     const parser = preloadManager.getParser();
     //     if (parser && parser.onExpirationUpdated) {
@@ -2890,7 +3265,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
     //   },
     //   onEvent: (e) => {
     //     preloadManager.dispatchEvent(e);
-    //     if (e.type == shaka.util.FakeEvent.EventName.DrmSessionUpdate &&
+    //     if (e.type == util.FakeEvent.EventName.DrmSessionUpdate &&
     //         firstEvent) {
     //       firstEvent = false;
     //       const now = Date.now() / 1000;
@@ -3098,7 +3473,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * When notified of a media quality change we need to emit a
    * MediaQualityChange event to the app.
    *
-   * @param {shaka.extern.MediaQualityInfo} mediaQuality
+   * @param {extern.MediaQualityInfo} mediaQuality
    * @param {number} position
    *
    * @private
@@ -3127,8 +3502,8 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * Creates a new instance of NetworkingEngine.  This can be replaced by tests
    * to create fake instances instead.
    *
-   * @param {(function():?shaka.media.PreloadManager)=} getPreloadManager
-   * @return {!shaka.net.NetworkingEngine}
+   * @param {(function():?media.PreloadManager)=} getPreloadManager
+   * @return {!net.NetworkingEngine}
    */
   createNetworkingEngine(getPreloadManager: (() => PreloadManager | null) | null = null) {
     if (!getPreloadManager) {
@@ -3279,7 +3654,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
    *
    * <p>
    * First, this can be passed a single "plain" object.  This object should
-   * follow the {@link shaka.extern.PlayerConfiguration} object.  Not all fields
+   * follow the {@link extern.PlayerConfiguration} object.  Not all fields
    * need to be set; unset fields retain their old values.
    *
    * <p>
@@ -3298,13 +3673,15 @@ export class Player extends FakeEventTarget implements IDestroyable {
   configure(config: Record<string, any> | string, value: any) {
     asserts.assert(this.config_, 'Config must not be null!');
     asserts.assert(typeof config == 'object' || arguments.length == 2, 'String configs should have values!');
-    config = config as Record<string, any>;
+
     // ('fieldName', value) format
     if (arguments.length == 2 && typeof config == 'string') {
       config = ConfigUtils.convertToConfigObject(config, value);
     }
 
-    asserts.assert(typeof config == 'object', 'Should be an object!');
+    if (typeof config !== 'object') {
+      return;
+    }
 
     // Deprecate 'streaming.forceTransmuxTS' configuration.
     if (config['streaming'] && 'forceTransmuxTS' in config['streaming']) {
@@ -3335,6 +3712,121 @@ export class Player extends FakeEventTarget implements IDestroyable {
         'streaming.useNativeHlsOnSafari configuration',
         'Please Use streaming.useNativeHlsForFairPlay or ' + 'streaming.preferNativeHls instead.'
       );
+      config['streaming']['preferNativeHls'] = config['streaming']['useNativeHlsOnSafari'] && Platform.isApple();
+      delete config['streaming']['useNativeHlsOnSafari'];
+    }
+
+    // Deprecate 'streaming.liveSync' boolean configuration.
+    if (config['streaming'] && typeof config['streaming']['liveSync'] == 'boolean') {
+      Deprecate.deprecateFeature(5, 'streaming.liveSync', 'Please Use streaming.liveSync.enabled instead.');
+      const liveSyncValue = config['streaming']['liveSync'];
+      config['streaming']['liveSync'] = {};
+      config['streaming']['liveSync']['enabled'] = liveSyncValue;
+    }
+
+    // map liveSyncMinLatency and liveSyncMaxLatency to liveSync.targetLatency
+    // if liveSync.targetLatency isn't set.
+    if (
+      config['streaming'] &&
+      (!config['streaming']['liveSync'] || !('targetLatency' in config['streaming']['liveSync'])) &&
+      ('liveSyncMinLatency' in config['streaming'] || 'liveSyncMaxLatency' in config['streaming'])
+    ) {
+      const min = config['streaming']['liveSyncMinLatency'] || 0;
+      const max = config['streaming']['liveSyncMaxLatency'] || 1;
+      const mid = Math.abs(max - min) / 2;
+      config['streaming']['liveSync'] = config['streaming']['liveSync'] || {};
+      config['streaming']['liveSync']['targetLatency'] = min + mid;
+      config['streaming']['liveSync']['targetLatencyTolerance'] = mid;
+    }
+    // Deprecate 'streaming.liveSyncMaxLatency' configuration.
+    if (config['streaming'] && 'liveSyncMaxLatency' in config['streaming']) {
+      Deprecate.deprecateFeature(
+        5,
+        'streaming.liveSyncMaxLatency',
+        'Please Use streaming.liveSync.targetLatency and ' +
+          'streaming.liveSync.targetLatencyTolerance instead. ' +
+          'Or, set the values in your DASH manifest'
+      );
+      delete config['streaming']['liveSyncMaxLatency'];
+    }
+    // Deprecate 'streaming.liveSyncMinLatency' configuration.
+    if (config['streaming'] && 'liveSyncMinLatency' in config['streaming']) {
+      Deprecate.deprecateFeature(
+        5,
+        'streaming.liveSyncMinLatency',
+        'Please Use streaming.liveSync.targetLatency and ' +
+          'streaming.liveSync.targetLatencyTolerance instead. ' +
+          'Or, set the values in your DASH manifest'
+      );
+      delete config['streaming']['liveSyncMinLatency'];
+    }
+
+    // Deprecate 'streaming.liveSyncTargetLatency' configuration.
+    if (config['streaming'] && 'liveSyncTargetLatency' in config['streaming']) {
+      Deprecate.deprecateFeature(
+        5,
+        'streaming.liveSyncTargetLatency',
+        'Please Use streaming.liveSync.targetLatency instead.'
+      );
+      config['streaming']['liveSync'] = config['streaming']['liveSync'] || {};
+      config['streaming']['liveSync']['targetLatency'] = config['streaming']['liveSyncTargetLatency'];
+      delete config['streaming']['liveSyncTargetLatency'];
+    }
+
+    // Deprecate 'streaming.liveSyncTargetLatencyTolerance' configuration.
+    if (config['streaming'] && 'liveSyncTargetLatencyTolerance' in config['streaming']) {
+      Deprecate.deprecateFeature(
+        5,
+        'streaming.liveSyncTargetLatencyTolerance',
+        'Please Use streaming.liveSync.targetLatencyTolerance instead.'
+      );
+      config['streaming']['liveSync'] = config['streaming']['liveSync'] || {};
+      config['streaming']['liveSync']['targetLatencyTolerance'] = config['streaming']['liveSyncTargetLatencyTolerance'];
+      delete config['streaming']['liveSyncTargetLatencyTolerance'];
+    }
+
+    // Deprecate 'streaming.liveSyncPlaybackRate' configuration.
+    if (config['streaming'] && 'liveSyncPlaybackRate' in config['streaming']) {
+      Deprecate.deprecateFeature(
+        5,
+        'streaming.liveSyncPlaybackRate',
+        'Please Use streaming.liveSync.maxPlaybackRate instead.'
+      );
+      config['streaming']['liveSync'] = config['streaming']['liveSync'] || {};
+      config['streaming']['liveSync']['maxPlaybackRate'] = config['streaming']['liveSyncPlaybackRate'];
+      delete config['streaming']['liveSyncPlaybackRate'];
+    }
+
+    // Deprecate 'streaming.liveSyncMinPlaybackRate' configuration.
+    if (config['streaming'] && 'liveSyncMinPlaybackRate' in config['streaming']) {
+      Deprecate.deprecateFeature(
+        5,
+        'streaming.liveSyncMinPlaybackRate',
+        'Please Use streaming.liveSync.minPlaybackRate instead.'
+      );
+      config['streaming']['liveSync'] = config['streaming']['liveSync'] || {};
+      config['streaming']['liveSync']['minPlaybackRate'] = config['streaming']['liveSyncMinPlaybackRate'];
+      delete config['streaming']['liveSyncMinPlaybackRate'];
+    }
+
+    // Deprecate 'streaming.liveSyncPanicMode' configuration.
+    if (config['streaming'] && 'liveSyncPanicMode' in config['streaming']) {
+      Deprecate.deprecateFeature(5, 'streaming.liveSyncPanicMode', 'Please Use streaming.liveSync.panicMode instead.');
+      config['streaming']['liveSync'] = config['streaming']['liveSync'] || {};
+      config['streaming']['liveSync']['panicMode'] = config['streaming']['liveSyncPanicMode'];
+      delete config['streaming']['liveSyncPanicMode'];
+    }
+
+    // Deprecate 'streaming.liveSyncPanicThreshold' configuration.
+    if (config['streaming'] && 'liveSyncPanicThreshold' in config['streaming']) {
+      Deprecate.deprecateFeature(
+        5,
+        'streaming.liveSyncPanicThreshold',
+        'Please Use streaming.liveSync.panicThreshold instead.'
+      );
+      config['streaming']['liveSync'] = config['streaming']['liveSync'] || {};
+      config['streaming']['liveSync']['panicThreshold'] = config['streaming']['liveSyncPanicThreshold'];
+      delete config['streaming']['liveSyncPanicThreshold'];
     }
 
     // Deprecate 'mediaSource.sourceBufferExtraFeatures' configuration.
@@ -3349,6 +3841,16 @@ export class Player extends FakeEventTarget implements IDestroyable {
         return sourceBufferExtraFeatures;
       };
       delete config['mediaSource']['sourceBufferExtraFeatures'];
+    }
+
+    // Deprecate 'manifest.hls.useSafariBehaviorForLive' configuration.
+    if (config['manifest'] && config['manifest']['hls'] && 'useSafariBehaviorForLive' in config['manifest']['hls']) {
+      Deprecate.deprecateFeature(
+        5,
+        'manifest.hls.useSafariBehaviorForLive configuration',
+        'Please Use liveSync config to keep on live Edge instead.'
+      );
+      delete config['manifest']['hls']['useSafariBehaviorForLive'];
     }
 
     // If lowLatencyMode is enabled, and inaccurateManifestTolerance and
@@ -3604,7 +4106,7 @@ export class Player extends FakeEventTarget implements IDestroyable {
    * Fire an event, but wait a little bit so that the immediate execution can
    * complete before the event is handled.
    *
-   * @param {!shaka.util.FakeEvent} event
+   * @param {!util.FakeEvent} event
    * @private
    */
   private async delayDispatchEvent_(event: FakeEvent) {
