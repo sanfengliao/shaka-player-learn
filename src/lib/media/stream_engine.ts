@@ -586,6 +586,7 @@ export class StreamingEngine implements IDestroyable {
         segment = mediaState.segmentIterator.current();
       }
       // Only reset the iterator if we seek outside the current segment.
+      // 当seek到了当前buffer之外之后，就把segmentIterator设置为null，这样子就会重新生成segmentIterator
       if (!segment || segment.startTime > presentationTime || segment.endTime < presentationTime) {
         mediaState.segmentIterator = null;
       }
@@ -1145,6 +1146,7 @@ export class StreamingEngine implements IDestroyable {
       // Wait and give other media types time to catch up to this one.
       // For example, let video buffering catch up to audio buffering before
       // fetching another audio segment.
+      // 等待其他流追赶到这个流
       log.v2(logPrefix, 'waiting for other streams to buffer');
       return this.config_.updateIntervalSeconds;
     }
@@ -1409,10 +1411,6 @@ export class StreamingEngine implements IDestroyable {
 
       mediaState.performingUpdate = false;
       mediaState.recovering = false;
-      log.v2(logPrefix, 'advancing to next segment', newRef);
-
-      mediaState.performingUpdate = false;
-      mediaState.recovering = false;
 
       const info = this.playerInterface_.mediaSourceEngine.getBufferedInfo();
       // @ts-expect-error
@@ -1622,10 +1620,6 @@ export class StreamingEngine implements IDestroyable {
         }
       }
       const setProperties = async () => {
-        /**
-         * @type {!Map.<shaka.util.ManifestParserUtils.ContentType,
-         *              shaka.extern.Stream>}
-         */
         const streamsByType = new Map<string, Stream>();
         if (this.currentVariant_!.audio) {
           streamsByType.set(ContentType.AUDIO, this.currentVariant_!.audio);

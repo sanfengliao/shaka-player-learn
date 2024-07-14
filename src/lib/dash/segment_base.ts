@@ -68,10 +68,10 @@ export class SegmentBase {
   /**
    * Creates a new StreamInfo object.
    *
-   * @param {shaka.dash.DashParser.Context} context
-   * @param {shaka.dash.DashParser.RequestSegmentCallback} requestSegment
-   * @param {shaka.extern.aesKey|undefined} aesKey
-   * @return {shaka.dash.DashParser.StreamInfo}
+   * @param context
+   * @param requestSegment
+   * @param aesKey
+   * @return
    */
   static createStreamInfo(
     context: DashParserContext,
@@ -345,8 +345,11 @@ export class SegmentBase {
    * @return {?shaka.extern.xml.Node}
    * @private
    */
-  static fromInheritance_(frame?: DashParserInheritanceFrame): XmlNode {
-    return frame?.segmentBase!;
+  static fromInheritance_(frame: DashParserInheritanceFrame | null): XmlNode | null {
+    if (!frame) {
+      return null;
+    }
+    return frame.segmentBase;
   }
 
   /**

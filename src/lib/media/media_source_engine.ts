@@ -701,17 +701,20 @@ export class MediaSourceEngine implements IDestroyable {
     }
 
     let timestampOffset = this.sourceBuffers_[contentType].timestampOffset;
+    console.log('timestampOffset', timestampOffset);
     let mimeType = this.sourceBufferTypes_[contentType];
     if (this.transmuxers_[contentType]) {
       // TODO(sanfeng): TransmuxerEngine
       // mimeType = this.transmuxers_[contentType].getOriginalMimeType();
     }
 
+    // TODO: 这一段逻辑
     if (reference) {
       const timestamp = this.getTimestampAndDispatchMetadata_(contentType, data, reference, mimeType, timestampOffset);
       if (timestamp !== null) {
         const calculatedTimestampOffset = reference.startTime - timestamp;
         const timestampOffsetDifference = Math.abs(timestampOffset - calculatedTimestampOffset);
+        // 如果startTime和timestamp的差值大于过大，需要调整timestampOffset让时间戳同步
         if (
           (timestampOffsetDifference >= 0.001 || seeked || adaptation) &&
           (!isChunkedData || calculatedTimestampOffset > 0 || !timestampOffset)

@@ -125,8 +125,6 @@ export class SegmentIndex implements IReleasable, ISegmentIndex, Iterable<Segmen
       return null;
     }
 
-    console.log('[segmentIndex] get', position, this.numEvicted_, this.references.length);
-
     const index = position - this.numEvicted_;
 
     if (index < 0 || index >= this.references.length) {

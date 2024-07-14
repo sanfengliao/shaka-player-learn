@@ -92,8 +92,11 @@ export class SegmentList {
    * @return
    * @private
    */
-  static fromInheritance_(frame?: DashParserInheritanceFrame): XmlNode {
-    return frame!.segmentList!;
+  static fromInheritance_(frame: DashParserInheritanceFrame | null): XmlNode | null {
+    if (!frame) {
+      return null;
+    }
+    return frame.segmentList;
   }
 
   /**

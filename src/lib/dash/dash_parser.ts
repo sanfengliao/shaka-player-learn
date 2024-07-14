@@ -2806,7 +2806,7 @@ export interface DashParserStreamInfo {
   generateSegmentIndex: DashParserGenerateSegmentIndexFunction;
 }
 
-export type GetFrameNode = (frame: DashParserInheritanceFrame | null) => XmlNode | undefined;
+export type GetFrameNode = (frame: DashParserInheritanceFrame | null) => XmlNode | null;
 export const registerDashParser = () => {
   ManifestParser.registerParserByMime('application/dash+xml', () => new DashParser());
   ManifestParser.registerParserByMime('video/vnd.mpeg.dash.mpd', () => new DashParser());

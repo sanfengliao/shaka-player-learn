@@ -7,6 +7,7 @@ export class PresentationTimeline {
   private presentationDelay_: number;
   private autoCorrectDrift_: boolean;
   private duration_ = Infinity;
+  // dash timeShiftBufferDepth
   private segmentAvailabilityDuration_ = Infinity;
   /**
    * The maximum segment duration (in seconds).  Can be based on explicitly-

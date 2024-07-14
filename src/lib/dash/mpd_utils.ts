@@ -254,10 +254,7 @@ export class MpdUtils {
    *   Gets the element that contains the segment info.
    * @return
    */
-  static parseSegmentInfo(
-    context: DashParserContext,
-    callback: (representation: DashParserInheritanceFrame | null) => XmlNode
-  ): MpdUtilsSegmentInfo {
+  static parseSegmentInfo(context: DashParserContext, callback: GetFrameNode): MpdUtilsSegmentInfo {
     asserts.assert(callback(context.representation), 'There must be at least one element of the given type.');
     const timescaleStr = MpdUtils.inheritAttribute(context, callback, 'timescale');
     let timescale = 1;
